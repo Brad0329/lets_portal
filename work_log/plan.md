@@ -249,6 +249,34 @@ CREATE TABLE display_settings (
 3. PUT /api/keywords → keywords 테이블의 is_active 업데이트
 4. 메인 페이지 복귀 시 변경된 설정 기준으로 리스트 재조회
 
+### Phase 3: DB 스키마 확장 + 클라우드 배포
+
+#### 3-3. DB 스키마 확장 (Phase 3 초기에 진행)
+
+**목적:** API가 제공하는 유용한 필드를 추가하여 향후 기능(첨부파일 다운로드, 상세 정보 표시 등)에 대비
+
+**bid_notices 테이블 확장 컬럼:**
+
+| 컬럼명 | 타입 | 출처 API | 설명 |
+|--------|------|----------|------|
+| `file_url` | TEXT | 중소벤처기업부 `fileUrl` | 첨부파일 다운로드 URL |
+| `detail_url` | TEXT | K-Startup `detl_pg_url` | 상세페이지 URL (원문보기와 별도) |
+| `apply_url` | TEXT | K-Startup `biz_aply_url` | 신청 URL |
+| `region` | TEXT | K-Startup `supt_regin` | 지원 지역 |
+| `target` | TEXT | K-Startup `aply_trgt` | 지원 대상 (청년/예비창업자 등) |
+| `content` | TEXT | K-Startup `pbanc_ctnt`, 중기부 `content` | 공고 내용 요약 |
+| `budget` | TEXT | 중소벤처기업부 `supt_scale` | 지원 규모/예산 |
+| `contact` | TEXT | K-Startup `prch_cnpl_no` | 문의처 연락처 |
+| `est_price` | TEXT | 나라장터 `presmptPrce` | 추정 가격 (나라장터) |
+
+**마이그레이션 방법:** `ALTER TABLE bid_notices ADD COLUMN ...` (SQLite이므로 간단)
+
+**적용 순서:**
+1. DB 마이그레이션 스크립트 실행
+2. 각 수집기(collector)에서 새 필드 매핑 추가
+3. 프론트엔드 상세 모달에 새 필드 표시
+4. 재수집 실행하여 새 필드 데이터 채우기
+
 ### Phase 4: 자동화 및 고도화
 
 #### 4-1. 정기 수집 스케줄러
@@ -257,7 +285,30 @@ CREATE TABLE display_settings (
 - 신규 공고 감지 시 카운트 표시
 - 수집 로그 관리
 
-#### 4-2. 추가 기능 (선택)
+#### 4-2. 첨부파일 다운로드 기능
+
+**목표:** 메인 화면에서 공고 클릭 시, 해당 공고의 첨부파일을 원본 사이트에 가지 않고도 바로 다운로드
+
+**API별 첨부파일 지원 현황:**
+
+| API | 첨부파일 URL 제공 | 구현 방법 |
+|-----|------------------|-----------|
+| 중소벤처기업부 | ✅ `fileUrl` 필드 제공 | 상세 모달에 다운로드 링크 표시 (즉시 구현 가능) |
+| K-Startup | ❌ API 응답에 없음 | `detl_pg_url` 페이지를 크롤링하여 첨부파일 링크 추출 필요 |
+| 나라장터 | △ 별도 상세 API 호출 필요 | `getBidPblancDetail` 등 상세 API로 첨부파일 정보 조회 |
+
+**구현 단계:**
+1. **Phase 4a (즉시):** 중소벤처기업부 공고 → `fileUrl`을 DB에 저장 → 모달에 다운로드 버튼 표시
+2. **Phase 4b (추후):** 나라장터 상세 API 연동 → 첨부파일 목록 조회 → 다운로드 링크 제공
+3. **Phase 4c (추후):** K-Startup 페이지 크롤링 → 첨부파일(hwp, pdf 등) 링크 추출
+
+**주의사항:**
+- 첨부파일 다운로드는 원본 서버에서 직접 제공 (우리 서버에 저장하지 않음)
+- hwp/hwpx/pdf 등 형식이 혼재 → 아이콘으로 파일 형식 표시
+- 일부 사이트는 로그인 필요 → 로그인 필요 시 "원문보기"로 안내
+- 대량 다운로드 시 원본 서버 부하 → 요청 간격 제한 필요
+
+#### 4-3. 추가 기능 (선택)
 - 마감임박 하이라이트 (D-3 이내 빨간색)
 - 키워드 알림 기능 (관심 키워드 등록 → 신규 공고 알림)
 - 엑셀 다운로드 (검색 결과)
