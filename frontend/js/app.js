@@ -84,9 +84,7 @@ function renderNotices(notices) {
             ? '<span class="badge badge-ongoing">진행중</span>'
             : '<span class="badge badge-closed">마감</span>';
 
-        const titleHtml = n.url
-            ? `<a href="${escapeHtml(n.url)}" target="_blank" class="notice-link">${escapeHtml(n.title)}</a>`
-            : escapeHtml(n.title);
+        const titleHtml = escapeHtml(n.title);
 
         const keywords = (n.keywords || '').split(',')
             .filter(k => k.trim())
@@ -160,13 +158,62 @@ async function runCollect() {
 }
 
 // ─── 모달 ────────────────────────────────────
-function openModal(id) {
+async function openModal(id) {
+    // 모달 즉시 열기 (기본 정보)
     const n = currentNotices.find(n => n.id === id);
     if (!n) return;
 
+    renderModal(n);
+    document.getElementById('modal-overlay').classList.add('active');
+
+    // 상세 API 호출 (확장 필드 보충)
+    try {
+        const res = await fetch(`${API_BASE}/api/notices/${id}`);
+        const detail = await res.json();
+        if (!detail.error) {
+            renderModal(detail);
+        }
+    } catch (e) {
+        console.error('상세 조회 실패:', e);
+    }
+}
+
+function renderModal(n) {
     const statusText = n.status === 'ongoing' ? '진행중' : '마감';
     const keywords = (n.keywords || '').split(',').filter(k => k.trim())
         .map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`).join(' ');
+
+    // 확장 필드 (값이 있을 때만 표시)
+    let extraFields = '';
+    if (n.biz_name) extraFields += `<div class="modal-info"><label>사업명</label> ${escapeHtml(n.biz_name)}</div>`;
+    if (n.region) extraFields += `<div class="modal-info"><label>지원 지역</label> ${escapeHtml(n.region)}</div>`;
+    if (n.target) extraFields += `<div class="modal-info"><label>지원 대상</label> ${escapeHtml(n.target)}</div>`;
+    if (n.target_age) extraFields += `<div class="modal-info"><label>대상 연령</label> ${escapeHtml(n.target_age)}</div>`;
+    if (n.biz_enyy) extraFields += `<div class="modal-info"><label>창업 연차</label> ${escapeHtml(n.biz_enyy)}</div>`;
+    if (n.excl_target) extraFields += `<div class="modal-info"><label>제외 대상</label> ${escapeHtml(n.excl_target)}</div>`;
+    if (n.budget) extraFields += `<div class="modal-info"><label>지원 규모</label> ${escapeHtml(n.budget)}</div>`;
+    if (n.est_price) extraFields += `<div class="modal-info"><label>추정 가격</label> ${escapeHtml(n.est_price)}</div>`;
+    if (n.apply_method) extraFields += `<div class="modal-info"><label>접수 방법</label> ${escapeHtml(n.apply_method)}</div>`;
+    if (n.department) extraFields += `<div class="modal-info"><label>담당부서</label> ${escapeHtml(n.department)}</div>`;
+    if (n.contact) extraFields += `<div class="modal-info"><label>문의처</label> ${escapeHtml(n.contact)}</div>`;
+    if (n.content) extraFields += `<div class="modal-info modal-content-box"><label>사업 개요</label><div class="content-text">${escapeHtml(n.content)}</div></div>`;
+
+    // 링크 버튼들
+    let links = '';
+    if (n.url) links += `<a href="${escapeHtml(n.url)}" target="_blank" class="modal-link">공고 사이트 바로가기</a>`;
+    if (n.apply_url) links += `<a href="${escapeHtml(n.apply_url)}" target="_blank" class="modal-link modal-link-apply">신청 페이지</a>`;
+    // 첨부파일: JSON 배열이면 여러 파일, 아니면 단일 URL
+    if (n.file_url) {
+        try {
+            const files = JSON.parse(n.file_url);
+            files.forEach(f => {
+                const ext = f.name.split('.').pop().toLowerCase();
+                links += `<a href="${escapeHtml(f.url)}" target="_blank" class="modal-link modal-link-file">${escapeHtml(f.name)}</a>`;
+            });
+        } catch {
+            links += `<a href="${escapeHtml(n.file_url)}" target="_blank" class="modal-link modal-link-file">첨부파일 다운로드</a>`;
+        }
+    }
 
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-title">${escapeHtml(n.title)}</div>
@@ -178,10 +225,9 @@ function openModal(id) {
         <div class="modal-info"><label>마감일</label> ${escapeHtml(n.end_date || '-')}</div>
         <div class="modal-info"><label>상태</label> <span class="badge badge-${n.status === 'ongoing' ? 'ongoing' : 'closed'}">${statusText}</span></div>
         <div class="modal-info"><label>키워드</label> ${keywords || '-'}</div>
-        ${n.url ? `<a href="${escapeHtml(n.url)}" target="_blank" class="modal-link">🔗 공고 사이트 바로가기</a>` : ''}
+        ${extraFields}
+        <div class="modal-links">${links}</div>
     `;
-
-    document.getElementById('modal-overlay').classList.add('active');
 }
 
 function closeModal() {

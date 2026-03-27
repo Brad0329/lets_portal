@@ -145,6 +145,88 @@ def get_stats():
     return {"grand_total": grand_total, "last_collected": last_collected, "by_source": stats}
 
 
+# ─── 공고 상세 조회 API ──────────────────────────
+
+@app.get("/api/notices/{notice_id}")
+def get_notice_detail(notice_id: int):
+    """공고 상세 조회 — DB에 확장 필드 없으면 K-Startup API 실시간 조회"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM bid_notices WHERE id=?", (notice_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {"error": "공고를 찾을 수 없습니다."}
+
+    notice = dict(row)
+
+    # K-Startup 공고인데 확장 필드가 비어있으면 API에서 실시간 보충
+    if notice["source"] == "K-Startup" and not notice.get("content"):
+        try:
+            detail = _fetch_kstartup_detail(notice["bid_no"])
+            if detail:
+                notice.update(detail)
+                _update_notice_detail(notice_id, detail)
+        except Exception as e:
+            logger.warning(f"K-Startup 상세 조회 실패: {e}")
+
+    return notice
+
+
+def _fetch_kstartup_detail(bid_no: str) -> dict | None:
+    """K-Startup API에서 단건 상세 조회"""
+    import requests
+    import html as html_mod
+    from config import DATA_GO_KR_KEY
+
+    url = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01"
+    params = {
+        "serviceKey": DATA_GO_KR_KEY,
+        "page": 1,
+        "perPage": 1,
+        "returnType": "json",
+        "cond[pbanc_sn::EQ]": bid_no,
+    }
+    resp = requests.get(url, params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    items = data.get("data", [])
+    if not items:
+        return None
+
+    item = items[0]
+    def _c(v):
+        if not v: return ""
+        v = html_mod.unescape(v)
+        return v.replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n").strip()
+
+    return {
+        "content": _c(item.get("pbanc_ctnt", ""))[:500],
+        "target": _c(item.get("aply_trgt_ctnt", "")),
+        "region": item.get("supt_regin") or "",
+        "contact": item.get("prch_cnpl_no") or "",
+        "detail_url": item.get("detl_pg_url") or "",
+        "apply_url": item.get("biz_aply_url") or "",
+        "apply_method": _c(item.get("aply_mthd_onli_rcpt_istc") or item.get("aply_mthd_vst_rcpt_istc") or ""),
+        "biz_enyy": item.get("biz_enyy") or "",
+        "target_age": item.get("biz_trgt_age") or "",
+        "department": _c(item.get("biz_prch_dprt_nm") or ""),
+        "excl_target": _c(item.get("aply_excl_trgt_ctnt") or ""),
+        "biz_name": _c(item.get("intg_pbanc_biz_nm") or ""),
+    }
+
+
+def _update_notice_detail(notice_id: int, detail: dict):
+    """실시간 조회 결과를 DB에 캐시"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    sets = ", ".join(f"{k}=?" for k in detail)
+    cursor.execute(f"UPDATE bid_notices SET {sets} WHERE id=?", (*detail.values(), notice_id))
+    conn.commit()
+    conn.close()
+
+
 # ─── 설정 API ────────────────────────────────────
 
 @app.get("/api/settings")

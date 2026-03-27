@@ -241,6 +241,24 @@ main {
     font-size: 0.9rem;
 }
 .modal-link:hover { background: #1a6fa0; }
+.modal-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.modal-links .modal-link { margin-top: 0; }
+.modal-link-apply { background: #27ae60; }
+.modal-link-apply:hover { background: #1e8449; }
+.modal-link-file { background: #e67e22; }
+.modal-link-file:hover { background: #d35400; }
+.modal-content-box { flex-direction: column; }
+.modal-content-box .content-text {
+    margin-top: 4px;
+    padding: 10px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
 
 /* 행 클릭 커서 */
 #notices-table tbody tr { cursor: pointer; }

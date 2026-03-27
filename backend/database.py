@@ -57,6 +57,30 @@ def init_db():
         );
     """)
 
+    # Phase 3: bid_notices 스키마 확장 (9개 컬럼 추가)
+    new_columns = [
+        ("file_url", "TEXT"),       # 첨부파일 URL (중기부 fileUrl)
+        ("detail_url", "TEXT"),     # 상세페이지 URL (K-Startup detl_pg_url)
+        ("apply_url", "TEXT"),      # 신청 URL (K-Startup biz_aply_url)
+        ("region", "TEXT"),         # 지원 지역 (K-Startup supt_regin)
+        ("target", "TEXT"),         # 지원 대상 (K-Startup aply_trgt)
+        ("content", "TEXT"),        # 공고 내용 요약
+        ("budget", "TEXT"),         # 지원 규모/예산 (중기부 supt_scale)
+        ("contact", "TEXT"),        # 문의처 (K-Startup prch_cnpl_no)
+        ("est_price", "TEXT"),      # 추정 가격 (나라장터 presmptPrce)
+        ("apply_method", "TEXT"),   # 접수 방법 (K-Startup 온라인/방문 등)
+        ("biz_enyy", "TEXT"),       # 창업 연차 조건 (K-Startup)
+        ("target_age", "TEXT"),     # 대상 연령 (K-Startup)
+        ("department", "TEXT"),     # 담당부서 (K-Startup biz_prch_dprt_nm)
+        ("excl_target", "TEXT"),    # 제외 대상 (K-Startup aply_excl_trgt_ctnt)
+        ("biz_name", "TEXT"),       # 통합공고 사업명 (K-Startup intg_pbanc_biz_nm)
+    ]
+    for col_name, col_type in new_columns:
+        try:
+            cursor.execute(f"ALTER TABLE bid_notices ADD COLUMN {col_name} {col_type}")
+        except Exception:
+            pass  # 이미 존재하면 무시
+
     # 설정 초기값 삽입 (없을 때만)
     defaults = [
         ("status_filter", "ongoing", "진행중만=ongoing, 전체=all"),

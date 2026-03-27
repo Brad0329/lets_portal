@@ -110,6 +110,8 @@ def fetch_announcements(keywords: list[str], days: int = 30, bid_types: list[str
                     "status": status,
                     "url": detail_url,
                     "keywords": ",".join(matched),
+                    # Phase 3 확장 필드
+                    "est_price": item.get("presmptPrce", "") or "",
                 })
 
             if page * 100 >= total_count:
@@ -153,20 +155,24 @@ def save_to_db(notices: list[dict]):
             cursor.execute(
                 """UPDATE bid_notices SET title=?, organization=?, category=?,
                    start_date=?, end_date=?, status=?, url=?, keywords=?,
+                   est_price=?,
                    collected_at=datetime('now')
                    WHERE id=?""",
                 (n["title"], n["organization"], n["category"],
                  n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"],
+                 n.get("est_price", ""),
                  existing[0]),
             )
             updated += 1
         else:
             cursor.execute(
                 """INSERT INTO bid_notices
-                   (source, title, organization, category, bid_no, start_date, end_date, status, url, keywords, collected_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
+                   (source, title, organization, category, bid_no, start_date, end_date, status, url, keywords,
+                    est_price, collected_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
                 (n["source"], n["title"], n["organization"], n["category"],
-                 n["bid_no"], n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"]),
+                 n["bid_no"], n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"],
+                 n.get("est_price", "")),
             )
             inserted += 1
 

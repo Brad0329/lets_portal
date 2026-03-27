@@ -14,3 +14,13 @@ class BidNotice:
     status: Optional[str] = None
     url: Optional[str] = None
     keywords: Optional[str] = None
+    # Phase 3 확장 필드
+    file_url: Optional[str] = None
+    detail_url: Optional[str] = None
+    apply_url: Optional[str] = None
+    region: Optional[str] = None
+    target: Optional[str] = None
+    content: Optional[str] = None
+    budget: Optional[str] = None
+    contact: Optional[str] = None
+    est_price: Optional[str] = None

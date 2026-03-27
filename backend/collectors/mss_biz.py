@@ -4,8 +4,11 @@
 응답형식: XML
 """
 
+import re
+import json
 import requests
 import logging
+import html
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import sys
@@ -60,8 +63,10 @@ def fetch_announcements(keywords: list[str], days: int = 30) -> list[dict]:
             break
 
         for item in items:
-            title = item.findtext("title", "")
-            content = item.findtext("dataContents", "") or ""
+            title = html.unescape(item.findtext("title", "") or "")
+            content = html.unescape(item.findtext("dataContents", "") or "")
+            content = content.replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n")
+            content = re.sub(r"<[^>]+>", "", content).strip()
             search_text = f"{title} {content}".lower()
 
             # 키워드 매칭
@@ -95,6 +100,10 @@ def fetch_announcements(keywords: list[str], days: int = 30) -> list[dict]:
                 "status": status,
                 "url": view_url,
                 "keywords": ",".join(matched),
+                # Phase 3 확장 필드 — 첨부파일 전체 수집
+                "file_url": _extract_files(item),
+                "content": (content[:500] if content else ""),
+                "budget": item.findtext("suptScale", "") or item.findtext("supt_scale", "") or "",
             })
 
         # 다음 페이지
@@ -104,6 +113,19 @@ def fetch_announcements(keywords: list[str], days: int = 30) -> list[dict]:
 
     logger.info(f"중소벤처기업부 키워드 매칭 결과: {len(collected)}건")
     return collected
+
+
+def _extract_files(item) -> str:
+    """XML item에서 fileName/fileUrl 쌍을 모두 추출하여 JSON 문자열로 반환"""
+    names = [el.text for el in item.findall("fileName") if el.text]
+    urls = [el.text for el in item.findall("fileUrl") if el.text]
+    if not urls:
+        return ""
+    files = []
+    for i, url in enumerate(urls):
+        name = names[i] if i < len(names) else f"첨부파일{i+1}"
+        files.append({"name": name, "url": url})
+    return json.dumps(files, ensure_ascii=False)
 
 
 def save_to_db(notices: list[dict]):
@@ -124,20 +146,24 @@ def save_to_db(notices: list[dict]):
             cursor.execute(
                 """UPDATE bid_notices SET title=?, organization=?, category=?,
                    start_date=?, end_date=?, status=?, url=?, keywords=?,
+                   file_url=?, content=?, budget=?,
                    collected_at=datetime('now')
                    WHERE id=?""",
                 (n["title"], n["organization"], n["category"],
                  n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"],
+                 n.get("file_url", ""), n.get("content", ""), n.get("budget", ""),
                  existing[0]),
             )
             updated += 1
         else:
             cursor.execute(
                 """INSERT INTO bid_notices
-                   (source, title, organization, category, bid_no, start_date, end_date, status, url, keywords, collected_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
+                   (source, title, organization, category, bid_no, start_date, end_date, status, url, keywords,
+                    file_url, content, budget, collected_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
                 (n["source"], n["title"], n["organization"], n["category"],
-                 n["bid_no"], n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"]),
+                 n["bid_no"], n["start_date"], n["end_date"], n["status"], n["url"], n["keywords"],
+                 n.get("file_url", ""), n.get("content", ""), n.get("budget", "")),
             )
             inserted += 1
 
