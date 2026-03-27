@@ -59,6 +59,10 @@
             <h2>🏷️ 키워드 관리</h2>
             <p class="section-desc">활성화된 키워드에 매칭되는 공고만 수집됩니다. 클릭하여 ON/OFF 전환.</p>
             <div class="keyword-controls">
+                <input type="text" id="new-keyword" placeholder="새 키워드 입력" class="keyword-input" />
+                <select id="new-keyword-group" class="keyword-group-select"></select>
+                <button class="btn btn-sm" onclick="addKeyword()">+ 추가</button>
+                <span class="separator">|</span>
                 <button class="btn btn-sm" onclick="toggleAllKeywords(true)">전체 ON</button>
                 <button class="btn btn-sm btn-outline" onclick="toggleAllKeywords(false)">전체 OFF</button>
                 <span id="keyword-count" class="count-label"></span>

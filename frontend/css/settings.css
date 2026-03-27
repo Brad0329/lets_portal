@@ -72,6 +72,25 @@
 }
 .btn-outline:hover { background: #eef5fb; }
 
+.keyword-input {
+    padding: 6px 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    width: 150px;
+}
+.keyword-group-select {
+    padding: 6px 8px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: white;
+}
+.separator {
+    color: #ccc;
+    margin: 0 4px;
+}
+
 .count-label {
     font-size: 0.85rem;
     color: #777;

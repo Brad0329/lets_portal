@@ -202,6 +202,40 @@ def toggle_keyword(keyword_id: int):
     return dict(row) if row else {"error": "not found"}
 
 
+@app.post("/api/keywords")
+def add_keyword(keyword: str = Query(...), keyword_group: str = Query(default="사용자 추가")):
+    """키워드 추가"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    # 중복 체크
+    cursor.execute("SELECT id FROM keywords WHERE keyword=?", (keyword.strip(),))
+    if cursor.fetchone():
+        conn.close()
+        return {"error": f"'{keyword}' 키워드가 이미 존재합니다."}
+    cursor.execute(
+        "INSERT INTO keywords (keyword, keyword_group, is_active) VALUES (?, ?, 1)",
+        (keyword.strip(), keyword_group.strip()),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM keywords WHERE id=?", (new_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row)
+
+
+@app.delete("/api/keywords/{keyword_id}")
+def delete_keyword(keyword_id: int):
+    """키워드 삭제"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM keywords WHERE id=?", (keyword_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return {"success": affected > 0, "deleted_id": keyword_id}
+
+
 # ─── 기관 관리 API ────────────────────────────────
 
 @app.get("/api/organizations")

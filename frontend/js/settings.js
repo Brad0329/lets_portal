@@ -70,6 +70,15 @@ function renderKeywords() {
         groups[g].push(kw);
     });
 
+    // 그룹 셀렉트 업데이트
+    const groupSelect = document.getElementById('new-keyword-group');
+    const currentVal = groupSelect.value;
+    const groupNames = Object.keys(groups);
+    groupSelect.innerHTML = groupNames.map(g =>
+        `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`
+    ).join('') + '<option value="사용자 추가">사용자 추가</option>';
+    if (currentVal) groupSelect.value = currentVal;
+
     container.innerHTML = Object.entries(groups).map(([group, keywords]) => `
         <div class="keyword-group">
             <div class="keyword-group-title">${escapeHtml(group)}</div>
@@ -77,7 +86,8 @@ function renderKeywords() {
                 ${keywords.map(kw => `
                     <span class="keyword-chip ${kw.is_active ? 'active' : 'inactive'}"
                           data-id="${kw.id}"
-                          onclick="toggleKeyword(${kw.id})">
+                          onclick="toggleKeyword(${kw.id})"
+                          oncontextmenu="deleteKeyword(event, ${kw.id}, '${escapeHtml(kw.keyword)}')">
                         ${escapeHtml(kw.keyword)}
                     </span>
                 `).join('')}
@@ -96,6 +106,40 @@ async function toggleKeyword(id) {
         renderKeywords();
     } catch (e) {
         console.error('키워드 토글 실패:', e);
+    }
+}
+
+async function addKeyword() {
+    const input = document.getElementById('new-keyword');
+    const keyword = input.value.trim();
+    if (!keyword) { input.focus(); return; }
+
+    const group = document.getElementById('new-keyword-group').value;
+    try {
+        const res = await fetch(`${API_BASE}/api/keywords?keyword=${encodeURIComponent(keyword)}&keyword_group=${encodeURIComponent(group)}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.error) {
+            alert(data.error);
+        } else {
+            allKeywords.push(data);
+            renderKeywords();
+            input.value = '';
+        }
+    } catch (e) {
+        alert('키워드 추가 실패: ' + e.message);
+    }
+}
+
+async function deleteKeyword(event, id, name) {
+    event.preventDefault();
+    if (!confirm(`"${name}" 키워드를 삭제하시겠습니까?`)) return;
+
+    try {
+        await fetch(`${API_BASE}/api/keywords/${id}`, { method: 'DELETE' });
+        allKeywords = allKeywords.filter(k => k.id !== id);
+        renderKeywords();
+    } catch (e) {
+        alert('삭제 실패: ' + e.message);
     }
 }
 
