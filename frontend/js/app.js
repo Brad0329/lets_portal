@@ -2,6 +2,7 @@
 const API_BASE = '';  // same origin
 
 let currentPage = 1;
+let currentNotices = [];  // 모달용 데이터 저장
 
 // ─── 초기 로드 ───────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,6 +60,7 @@ async function loadNotices() {
     try {
         const res = await fetch(`${API_BASE}/api/notices?${params}`);
         const data = await res.json();
+        currentNotices = data.notices;
         renderNotices(data.notices);
         renderPagination(data.total_pages, data.page);
     } catch (e) {
@@ -91,7 +93,7 @@ function renderNotices(notices) {
             .map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`)
             .join('');
 
-        return `<tr>
+        return `<tr onclick="openModal(${n.id})">
             <td><span class="source-badge ${sourceClass}">${escapeHtml(n.source)}</span></td>
             <td>${titleHtml}</td>
             <td>${escapeHtml(n.organization || '')}</td>
@@ -156,6 +158,40 @@ async function runCollect() {
         btn.classList.remove('collecting');
     }
 }
+
+// ─── 모달 ────────────────────────────────────
+function openModal(id) {
+    const n = currentNotices.find(n => n.id === id);
+    if (!n) return;
+
+    const statusText = n.status === 'ongoing' ? '진행중' : '마감';
+    const keywords = (n.keywords || '').split(',').filter(k => k.trim())
+        .map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`).join(' ');
+
+    document.getElementById('modal-body').innerHTML = `
+        <div class="modal-title">${escapeHtml(n.title)}</div>
+        <div class="modal-info"><label>출처</label> ${escapeHtml(n.source)}</div>
+        <div class="modal-info"><label>기관</label> ${escapeHtml(n.organization || '-')}</div>
+        <div class="modal-info"><label>분류</label> ${escapeHtml(n.category || '-')}</div>
+        <div class="modal-info"><label>공고번호</label> ${escapeHtml(n.bid_no || '-')}</div>
+        <div class="modal-info"><label>시작일</label> ${escapeHtml(n.start_date || '-')}</div>
+        <div class="modal-info"><label>마감일</label> ${escapeHtml(n.end_date || '-')}</div>
+        <div class="modal-info"><label>상태</label> <span class="badge badge-${n.status === 'ongoing' ? 'ongoing' : 'closed'}">${statusText}</span></div>
+        <div class="modal-info"><label>키워드</label> ${keywords || '-'}</div>
+        ${n.url ? `<a href="${escapeHtml(n.url)}" target="_blank" class="modal-link">🔗 공고 사이트 바로가기</a>` : ''}
+    `;
+
+    document.getElementById('modal-overlay').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('active');
+}
+
+// ESC로 모달 닫기
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
 
 // ─── 유틸 ────────────────────────────────────
 function getSourceClass(source) {

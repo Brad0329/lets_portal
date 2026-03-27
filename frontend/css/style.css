@@ -12,10 +12,26 @@ header {
     background: linear-gradient(135deg, #1a5276, #2980b9);
     color: white;
     padding: 24px 32px;
-    text-align: center;
+}
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1280px;
+    margin: 0 auto;
 }
 header h1 { font-size: 1.6rem; }
 header .subtitle { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+.header-settings {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    padding: 8px 16px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+.header-settings:hover { background: rgba(255,255,255,0.15); }
 
 main {
     max-width: 1280px;
@@ -179,9 +195,60 @@ main {
 /* 수집중 */
 .collecting { opacity: 0.6; pointer-events: none; }
 
+/* 모달 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.modal-close {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #999;
+}
+.modal-close:hover { color: #333; }
+.modal-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; line-height: 1.4; color: #1a5276; }
+.modal-info { margin-bottom: 8px; font-size: 0.9rem; }
+.modal-info label { font-weight: 600; color: #555; display: inline-block; width: 80px; }
+.modal-link {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: #2980b9;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+.modal-link:hover { background: #1a6fa0; }
+
+/* 행 클릭 커서 */
+#notices-table tbody tr { cursor: pointer; }
+
 /* 반응형 */
 @media (max-width: 768px) {
     .search-bar { flex-direction: column; }
     .stats-bar { flex-wrap: wrap; gap: 10px; }
     .col-org, .col-keywords { display: none; }
+    .header-top { flex-direction: column; gap: 8px; text-align: center; }
 }

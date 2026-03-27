@@ -18,10 +18,21 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """앱 시작 시 DB 초기화"""
+    """앱 시작 시 DB 초기화 + 스케줄러 시작"""
     init_db()
     logger.info("DB 초기화 완료")
+
+    # APScheduler - 매일 오전 9시, 오후 2시 자동 수집
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(collect_all, 'cron', hour='9,14', minute=0, id='auto_collect')
+    scheduler.start()
+    logger.info("자동 수집 스케줄러 시작 (매일 09:00, 14:00)")
+
     yield
+
+    scheduler.shutdown()
+    logger.info("스케줄러 종료")
 
 
 app = FastAPI(
@@ -213,10 +224,27 @@ def run_collect():
     return {"results": results}
 
 
+# ─── 스케줄러 상태 API ────────────────────────────
+
+@app.get("/api/scheduler")
+def get_scheduler_status():
+    """스케줄러 상태 조회"""
+    return {
+        "schedule": "매일 09:00, 14:00 자동 수집",
+        "status": "running",
+    }
+
+
 # ─── 프론트엔드 정적파일 ──────────────────────────
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):
+    from fastapi.responses import FileResponse
+
+    @app.get("/settings.html")
+    def settings_page():
+        return FileResponse(os.path.join(frontend_dir, "settings.html"))
+
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 

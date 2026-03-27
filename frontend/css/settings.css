@@ -1,0 +1,146 @@
+/* 설정 페이지 CSS */
+.header-nav {
+    margin-top: 8px;
+}
+.header-nav a {
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.header-nav a:hover { color: white; text-decoration: underline; }
+
+.settings-section {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.settings-section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    color: #1a5276;
+}
+.section-desc {
+    font-size: 0.85rem;
+    color: #777;
+    margin-bottom: 16px;
+}
+
+/* 설정 그리드 */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.setting-item label {
+    display: block;
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+.setting-item select,
+.setting-item input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* 메시지 */
+.msg {
+    margin-left: 12px;
+    font-size: 0.85rem;
+    color: #27ae60;
+}
+.msg.error { color: #e74c3c; }
+
+/* 키워드 */
+.keyword-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.btn-outline {
+    background: white;
+    color: #2980b9;
+    border: 1px solid #2980b9;
+}
+.btn-outline:hover { background: #eef5fb; }
+
+.count-label {
+    font-size: 0.85rem;
+    color: #777;
+    margin-left: 8px;
+}
+
+.keyword-group {
+    margin-bottom: 16px;
+}
+.keyword-group-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #eee;
+}
+.keyword-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.keyword-chip {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    user-select: none;
+}
+.keyword-chip.active {
+    background: #d4edda;
+    color: #155724;
+    border-color: #b7dfc4;
+}
+.keyword-chip.inactive {
+    background: #f0f0f0;
+    color: #aaa;
+    border-color: #ddd;
+    text-decoration: line-through;
+}
+.keyword-chip:hover { opacity: 0.8; transform: scale(1.03); }
+
+/* 기관 목록 */
+.org-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.org-table th {
+    background: #f0f4f8;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 0.82rem;
+    color: #555;
+}
+.org-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.85rem;
+}
+.org-table a {
+    color: #1a5276;
+    text-decoration: none;
+}
+.org-table a:hover { text-decoration: underline; }
+.org-active { color: #27ae60; }
+.org-inactive { color: #ccc; }
+
+/* 수집중 */
+.collecting { opacity: 0.6; pointer-events: none; }

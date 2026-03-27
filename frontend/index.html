@@ -8,9 +8,22 @@
 </head>
 <body>
     <header>
-        <h1>📋 입찰공고 포탈서비스</h1>
-        <p class="subtitle">주요 기관 입찰·사업공고 통합 검색</p>
+        <div class="header-top">
+            <div>
+                <h1>📋 입찰공고 포탈서비스</h1>
+                <p class="subtitle">주요 기관 입찰·사업공고 통합 검색</p>
+            </div>
+            <a href="/settings.html" class="header-settings">⚙️ 설정</a>
+        </div>
     </header>
+
+    <!-- 상세보기 모달 -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
 
     <main>
         <!-- 통계 바 -->

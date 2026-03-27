@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설정 - 입찰공고 포탈서비스</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/settings.css">
+</head>
+<body>
+    <header>
+        <h1>⚙️ 초기화면 설정</h1>
+        <p class="subtitle">키워드, 기간, 표시 옵션 관리</p>
+        <nav class="header-nav">
+            <a href="/">← 메인으로</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 표시 설정 -->
+        <section class="settings-section">
+            <h2>📋 표시 설정</h2>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label>상태 필터</label>
+                    <select id="set-status-filter">
+                        <option value="ongoing">진행중만</option>
+                        <option value="all">전체 (진행중+마감)</option>
+                        <option value="closed">마감만</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>조회 기간 (일)</label>
+                    <input type="number" id="set-date-range" min="7" max="365" value="30" />
+                </div>
+                <div class="setting-item">
+                    <label>정렬 기준</label>
+                    <select id="set-sort-order">
+                        <option value="deadline">마감임박순</option>
+                        <option value="latest">최신순</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>페이지당 건수</label>
+                    <select id="set-items-per-page">
+                        <option value="10">10건</option>
+                        <option value="20">20건</option>
+                        <option value="50">50건</option>
+                        <option value="100">100건</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn" onclick="saveSettings()">💾 설정 저장</button>
+            <span id="settings-msg" class="msg"></span>
+        </section>
+
+        <!-- 키워드 관리 -->
+        <section class="settings-section">
+            <h2>🏷️ 키워드 관리</h2>
+            <p class="section-desc">활성화된 키워드에 매칭되는 공고만 수집됩니다. 클릭하여 ON/OFF 전환.</p>
+            <div class="keyword-controls">
+                <button class="btn btn-sm" onclick="toggleAllKeywords(true)">전체 ON</button>
+                <button class="btn btn-sm btn-outline" onclick="toggleAllKeywords(false)">전체 OFF</button>
+                <span id="keyword-count" class="count-label"></span>
+            </div>
+            <div id="keyword-groups"></div>
+        </section>
+
+        <!-- 기관 목록 -->
+        <section class="settings-section">
+            <h2>🏢 기관 목록</h2>
+            <p class="section-desc">엑셀에서 가져온 입찰공고 사이트 목록 (총 58개)</p>
+            <div id="org-list"></div>
+        </section>
+
+        <!-- 수집 실행 -->
+        <section class="settings-section">
+            <h2>🔄 데이터 수집</h2>
+            <p class="section-desc">설정 변경 후 수집을 실행하면 새 설정이 반영됩니다.</p>
+            <button class="btn" id="btn-collect" onclick="runCollect()">🔄 수집 실행</button>
+            <span id="collect-msg" class="msg"></span>
+        </section>
+    </main>
+
+    <script src="/js/settings.js"></script>
+</body>
+</html>
