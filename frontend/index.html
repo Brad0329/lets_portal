@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입찰공고 포탈서비스</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>📋 입찰공고 포탈서비스</h1>
+        <p class="subtitle">주요 기관 입찰·사업공고 통합 검색</p>
+    </header>
+
+    <main>
+        <!-- 통계 바 -->
+        <div id="stats-bar" class="stats-bar">
+            <span id="stat-total">전체: -</span>
+            <span id="stat-ongoing">진행중: -</span>
+            <span id="stat-last-update">마지막 수집: -</span>
+            <button id="btn-collect" class="btn btn-sm" onclick="runCollect()">🔄 수집 실행</button>
+        </div>
+
+        <!-- 검색/필터 -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="공고명, 기관명, 키워드 검색..." />
+            <select id="filter-source">
+                <option value="">전체 출처</option>
+                <option value="K-Startup">K-Startup</option>
+                <option value="중소벤처기업부">중소벤처기업부</option>
+                <option value="나라장터">나라장터</option>
+            </select>
+            <select id="filter-status">
+                <option value="ongoing">진행중</option>
+                <option value="all">전체</option>
+                <option value="closed">마감</option>
+            </select>
+            <select id="filter-sort">
+                <option value="deadline">마감임박순</option>
+                <option value="latest">최신순</option>
+            </select>
+            <button class="btn" onclick="loadNotices()">검색</button>
+        </div>
+
+        <!-- 공고 목록 -->
+        <div id="notices-container">
+            <table id="notices-table">
+                <thead>
+                    <tr>
+                        <th class="col-source">출처</th>
+                        <th class="col-title">공고명</th>
+                        <th class="col-org">기관</th>
+                        <th class="col-date">시작일</th>
+                        <th class="col-date">마감일</th>
+                        <th class="col-status">상태</th>
+                        <th class="col-keywords">키워드</th>
+                    </tr>
+                </thead>
+                <tbody id="notices-body">
+                    <tr><td colspan="7" class="loading">데이터 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div id="pagination" class="pagination"></div>
+    </main>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

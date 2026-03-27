@@ -1,0 +1,187 @@
+/* 입찰공고 포탈서비스 CSS */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    min-height: 100vh;
+}
+
+header {
+    background: linear-gradient(135deg, #1a5276, #2980b9);
+    color: white;
+    padding: 24px 32px;
+    text-align: center;
+}
+header h1 { font-size: 1.6rem; }
+header .subtitle { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
+
+main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 통계 바 */
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.stats-bar span { color: #555; }
+
+/* 검색 바 */
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.search-bar input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 14px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+.search-bar select {
+    padding: 10px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+}
+
+/* 버튼 */
+.btn {
+    padding: 10px 20px;
+    background: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.btn:hover { background: #1a6fa0; }
+.btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+/* 테이블 */
+#notices-container {
+    background: white;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+#notices-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+#notices-table thead th {
+    background: #f0f4f8;
+    padding: 12px 10px;
+    text-align: left;
+    font-size: 0.85rem;
+    color: #555;
+    border-bottom: 2px solid #d0d5dd;
+    white-space: nowrap;
+}
+#notices-table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.88rem;
+    vertical-align: top;
+}
+#notices-table tbody tr:hover { background: #f8fafc; }
+
+.col-source { width: 100px; }
+.col-title { min-width: 300px; }
+.col-org { width: 140px; }
+.col-date { width: 95px; }
+.col-status { width: 70px; }
+.col-keywords { width: 160px; }
+
+/* 링크 스타일 */
+.notice-link {
+    color: #1a5276;
+    text-decoration: none;
+    font-weight: 500;
+}
+.notice-link:hover { text-decoration: underline; color: #2980b9; }
+
+/* 상태 뱃지 */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+.badge-ongoing { background: #d4edda; color: #155724; }
+.badge-closed { background: #f8d7da; color: #721c24; }
+
+/* 출처 뱃지 */
+.source-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.source-kstartup { background: #e8f5e9; color: #2e7d32; }
+.source-mss { background: #e3f2fd; color: #1565c0; }
+.source-nara { background: #fff3e0; color: #e65100; }
+
+/* 키워드 태그 */
+.keyword-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 1px 2px;
+    background: #eef2f7;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: #555;
+}
+
+/* 페이지네이션 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 16px;
+}
+.pagination button {
+    padding: 6px 12px;
+    border: 1px solid #d0d5dd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.pagination button.active {
+    background: #2980b9;
+    color: white;
+    border-color: #2980b9;
+}
+.pagination button:hover:not(.active) { background: #f0f4f8; }
+
+/* 로딩 */
+.loading { text-align: center; padding: 40px; color: #999; }
+
+/* 수집중 */
+.collecting { opacity: 0.6; pointer-events: none; }
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .search-bar { flex-direction: column; }
+    .stats-bar { flex-wrap: wrap; gap: 10px; }
+    .col-org, .col-keywords { display: none; }
+}
