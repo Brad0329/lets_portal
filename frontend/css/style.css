@@ -263,6 +263,47 @@ main {
 /* 행 클릭 커서 */
 #notices-table tbody tr { cursor: pointer; }
 
+/* 태그 배지 */
+.tag-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: white;
+}
+.tag-bid { background: #2980b9; }
+.tag-exclude { background: #95a5a6; }
+.tag-review { background: #f39c12; }
+.tag-won { background: #27ae60; }
+.tag-lost { background: #e74c3c; }
+.tag-meta { font-size: 0.78rem; color: #999; margin-left: 4px; }
+
+/* 모달 태그 버튼 */
+.modal-tag-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.tag-btn {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    background: #f8f9fa;
+    color: #555;
+    transition: all 0.15s;
+}
+.tag-btn:hover { border-color: #aaa; }
+.tag-btn.active { color: white; border-color: transparent; }
+.tag-btn-bid.active { background: #2980b9; }
+.tag-btn-review.active { background: #f39c12; }
+.tag-btn-exclude.active { background: #95a5a6; }
+.tag-btn-clear { color: #e74c3c; border-color: #e74c3c; background: white; }
+.tag-btn-clear:hover { background: #e74c3c; color: white; }
+
 /* 반응형 */
 @media (max-width: 768px) {
     .search-bar { flex-direction: column; }

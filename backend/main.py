@@ -6,9 +6,15 @@ from fastapi import FastAPI, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
+from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import logging
 import os
+
+
+class TagRequest(BaseModel):
+    tag: str
+    memo: str = ""
 
 from database import init_db, get_connection, hash_password, verify_password
 from auth import (
@@ -297,6 +303,9 @@ def get_notices(
     conditions = []
     params = []
 
+    # 제외 태그 공고 숨김
+    conditions.append("id NOT IN (SELECT notice_id FROM notice_tags WHERE tag='제외')")
+
     # 입찰공고일 기준 최근 N일 필터
     conditions.append("start_date >= date('now', ?)")
     params.append(f"-{date_range_days} days")
@@ -365,8 +374,72 @@ def get_stats(request: Request):
     cursor.execute("SELECT MAX(collected_at) FROM bid_notices")
     last_collected = cursor.fetchone()[0]
 
+    # 태그별 건수
+    cursor.execute("SELECT tag, COUNT(*) as cnt FROM notice_tags GROUP BY tag")
+    tag_stats = {row["tag"]: row["cnt"] for row in cursor.fetchall()}
+
     conn.close()
-    return {"grand_total": grand_total, "last_collected": last_collected, "by_source": stats}
+    return {"grand_total": grand_total, "last_collected": last_collected, "by_source": stats, "tag_stats": tag_stats}
+
+
+@app.get("/api/notices/tagged")
+def get_tagged_notices(
+    request: Request,
+    tag: str = Query(..., description="태그 필터"),
+    q: str = Query(default=""),
+    source: str = Query(default=""),
+    sort: str = Query(default="latest"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    """태그별 공고 목록 조회"""
+    require_login(request)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    conditions = ["nt.tag = ?"]
+    params = [tag]
+
+    if source:
+        conditions.append("bn.source = ?")
+        params.append(source)
+    if q:
+        conditions.append("(bn.title LIKE ? OR bn.organization LIKE ? OR bn.keywords LIKE ?)")
+        like_q = f"%{q}%"
+        params.extend([like_q, like_q, like_q])
+
+    where_clause = " AND ".join(conditions)
+
+    if sort == "deadline":
+        order = "CASE WHEN bn.end_date = '' THEN 1 ELSE 0 END, bn.end_date ASC"
+    elif sort == "tagged":
+        order = "nt.updated_at DESC"
+    else:
+        order = "CASE WHEN bn.start_date = '' THEN 1 ELSE 0 END, bn.start_date DESC"
+
+    cursor.execute(f"SELECT COUNT(*) FROM notice_tags nt JOIN bid_notices bn ON nt.notice_id = bn.id WHERE {where_clause}", params)
+    total = cursor.fetchone()[0]
+
+    offset = (page - 1) * size
+    cursor.execute(f"""
+        SELECT bn.*, nt.tag, nt.memo as tag_memo, nt.updated_at as tagged_at, u.name as tagged_by_name
+        FROM notice_tags nt
+        JOIN bid_notices bn ON nt.notice_id = bn.id
+        LEFT JOIN users u ON nt.tagged_by = u.id
+        WHERE {where_clause}
+        ORDER BY {order} LIMIT ? OFFSET ?
+    """, params + [size, offset])
+    rows = cursor.fetchall()
+    conn.close()
+
+    return {
+        "total": total,
+        "page": page,
+        "size": size,
+        "total_pages": (total + size - 1) // size,
+        "notices": [dict(row) for row in rows],
+    }
 
 
 # ─── 공고 상세 조회 API ──────────────────────────
@@ -380,12 +453,26 @@ def get_notice_detail(request: Request, notice_id: int):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM bid_notices WHERE id=?", (notice_id,))
     row = cursor.fetchone()
-    conn.close()
 
     if not row:
+        conn.close()
         return {"error": "공고를 찾을 수 없습니다."}
 
     notice = dict(row)
+
+    # 태그 정보 포함
+    cursor.execute("""
+        SELECT nt.tag, nt.memo, nt.updated_at as tagged_at, u.name as tagged_by_name
+        FROM notice_tags nt LEFT JOIN users u ON nt.tagged_by = u.id
+        WHERE nt.notice_id = ?
+    """, (notice_id,))
+    tag_row = cursor.fetchone()
+    conn.close()
+    if tag_row:
+        notice["tag"] = tag_row["tag"]
+        notice["tag_memo"] = tag_row["memo"]
+        notice["tagged_at"] = tag_row["tagged_at"]
+        notice["tagged_by_name"] = tag_row["tagged_by_name"]
 
     if notice["source"] == "K-Startup" and not notice.get("content"):
         try:
@@ -450,6 +537,80 @@ def _update_notice_detail(notice_id: int, detail: dict):
     cursor.execute(f"UPDATE bid_notices SET {sets} WHERE id=?", (*detail.values(), notice_id))
     conn.commit()
     conn.close()
+
+
+# ─── 태그 관리 API ────────────────────────────────
+
+@app.get("/api/notice-tags/{notice_id}")
+def get_notice_tag(request: Request, notice_id: int):
+    """공고의 태그 조회"""
+    require_login(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT nt.*, u.name as tagged_by_name
+        FROM notice_tags nt LEFT JOIN users u ON nt.tagged_by = u.id
+        WHERE nt.notice_id = ?
+    """, (notice_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else {"tag": None}
+
+
+@app.put("/api/notice-tags/{notice_id}")
+def set_notice_tag(request: Request, notice_id: int, body: TagRequest):
+    """공고에 태그 설정 — 검토요청: 모든 사용자, 입찰대상/제외/낙찰/유찰: 관리자(perm_bid_tag)"""
+    user = require_login(request)
+
+    valid_tags = ["검토요청", "입찰대상", "제외", "낙찰", "유찰"]
+    if body.tag not in valid_tags:
+        return JSONResponse(status_code=400, content={"error": f"유효하지 않은 태그입니다. ({', '.join(valid_tags)})"})
+
+    # 검토요청은 모든 로그인 사용자, 나머지는 관리자/perm_bid_tag 권한 필요
+    if body.tag != "검토요청" and not has_permission(user, "bid_tag"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="입찰예정/제외 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO notice_tags (notice_id, tag, tagged_by, memo)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(notice_id) DO UPDATE SET
+            tag = excluded.tag,
+            tagged_by = excluded.tagged_by,
+            memo = excluded.memo,
+            updated_at = datetime('now')
+    """, (notice_id, body.tag, user["id"], body.memo))
+    conn.commit()
+    conn.close()
+    return {"success": True, "notice_id": notice_id, "tag": body.tag}
+
+
+@app.delete("/api/notice-tags/{notice_id}")
+def remove_notice_tag(request: Request, notice_id: int):
+    """공고 태그 제거 (복원) — 검토요청은 본인 해제 가능, 나머지는 관리자"""
+    user = require_login(request)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT tag, tagged_by FROM notice_tags WHERE notice_id=?", (notice_id,))
+    tag_row = cursor.fetchone()
+    conn.close()
+
+    if tag_row:
+        # 검토요청 태그는 본인이 해제 가능, 나머지는 관리자/perm_bid_tag
+        if tag_row["tag"] != "검토요청" and not has_permission(user, "bid_tag"):
+            raise __import__("fastapi").HTTPException(status_code=403, detail="입찰예정/제외 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM notice_tags WHERE notice_id=?", (notice_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return {"success": affected > 0}
+
+
 
 
 # ─── 설정 API ────────────────────────────────────
@@ -619,6 +780,18 @@ if os.path.isdir(frontend_dir):
     @app.get("/dashboard.html")
     def dashboard_page():
         return FileResponse(os.path.join(frontend_dir, "dashboard.html"))
+
+    @app.get("/review-list.html")
+    def review_list_page():
+        return FileResponse(os.path.join(frontend_dir, "review-list.html"))
+
+    @app.get("/bid-list.html")
+    def bid_list_page():
+        return FileResponse(os.path.join(frontend_dir, "bid-list.html"))
+
+    @app.get("/excluded-list.html")
+    def excluded_list_page():
+        return FileResponse(os.path.join(frontend_dir, "excluded-list.html"))
 
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

@@ -47,6 +47,19 @@ def init_db():
             expires_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
+
+        CREATE TABLE IF NOT EXISTS notice_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            notice_id INTEGER NOT NULL,
+            tag TEXT NOT NULL,
+            tagged_by INTEGER,
+            memo TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(notice_id),
+            FOREIGN KEY (notice_id) REFERENCES bid_notices(id),
+            FOREIGN KEY (tagged_by) REFERENCES users(id)
+        );
     """)
 
     # 초기 관리자 계정 (admin / admin1234)

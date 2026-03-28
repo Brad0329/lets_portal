@@ -32,7 +32,9 @@ async function loadStats() {
         const res = await fetch(`${API_BASE}/api/notices/stats`);
         const data = await res.json();
 
-        document.getElementById('stat-total').textContent = `전체: ${data.grand_total}건`;
+        const elTotal = document.getElementById('stat-total');
+        if (!elTotal) return;
+        elTotal.textContent = `전체: ${data.grand_total}건`;
 
         const ongoing = data.by_source.reduce((sum, s) => sum + (s.ongoing || 0), 0);
         document.getElementById('stat-ongoing').textContent = `진행중: ${ongoing}건`;
@@ -181,10 +183,42 @@ async function openModal(id) {
     }
 }
 
+let currentModalNoticeId = null;
+
 function renderModal(n) {
+    currentModalNoticeId = n.id;
     const statusText = n.status === 'ongoing' ? '진행중' : '마감';
     const keywords = (n.keywords || '').split(',').filter(k => k.trim())
         .map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`).join(' ');
+
+    // 태그 표시
+    let tagHtml = '';
+    if (n.tag) {
+        const tagClass = getTagClass(n.tag);
+        tagHtml = `<div class="modal-info"><label>태그</label> <span class="tag-badge ${tagClass}">${escapeHtml(n.tag)}</span>`;
+        if (n.tagged_by_name) tagHtml += ` <span class="tag-meta">${escapeHtml(n.tagged_by_name)}</span>`;
+        if (n.tag_memo) tagHtml += ` <span class="tag-meta">${escapeHtml(n.tag_memo)}</span>`;
+        tagHtml += `</div>`;
+    }
+
+    // 태그 버튼 — 실무자: 검토요청만, 관리자(perm_bid_tag): 전체
+    let tagButtons = '';
+    if (currentUser) {
+        const currentTag = n.tag || '';
+        const isAdmin = hasPermission('bid_tag');
+        let btns = '';
+        // 검토요청: 모든 로그인 사용자
+        btns += `<button class="tag-btn tag-btn-review ${currentTag === '검토요청' ? 'active' : ''}" onclick="setTag(${n.id}, '검토요청')">검토요청</button>`;
+        // 입찰대상/제외: 관리자만
+        if (isAdmin) {
+            btns += `<button class="tag-btn tag-btn-bid ${currentTag === '입찰대상' ? 'active' : ''}" onclick="setTag(${n.id}, '입찰대상')">입찰대상</button>`;
+            btns += `<button class="tag-btn tag-btn-exclude ${currentTag === '제외' ? 'active' : ''}" onclick="setTag(${n.id}, '제외')">제외</button>`;
+        }
+        if (currentTag) {
+            btns += `<button class="tag-btn tag-btn-clear" onclick="removeTag(${n.id})">태그 해제</button>`;
+        }
+        tagButtons = `<div class="modal-tag-actions">${btns}</div>`;
+    }
 
     // 확장 필드 (값이 있을 때만 표시)
     let extraFields = '';
@@ -205,7 +239,6 @@ function renderModal(n) {
     let links = '';
     if (n.url) links += `<a href="${escapeHtml(n.url)}" target="_blank" class="modal-link">공고 사이트 바로가기</a>`;
     if (n.apply_url) links += `<a href="${escapeHtml(n.apply_url)}" target="_blank" class="modal-link modal-link-apply">신청 페이지</a>`;
-    // 첨부파일: JSON 배열이면 여러 파일, 아니면 단일 URL
     if (n.file_url) {
         try {
             const files = JSON.parse(n.file_url);
@@ -220,6 +253,8 @@ function renderModal(n) {
 
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-title">${escapeHtml(n.title)}</div>
+        ${tagButtons}
+        ${tagHtml}
         <div class="modal-info"><label>출처</label> ${escapeHtml(n.source)}</div>
         <div class="modal-info"><label>기관</label> ${escapeHtml(n.organization || '-')}</div>
         <div class="modal-info"><label>분류</label> ${escapeHtml(n.category || '-')}</div>
@@ -231,6 +266,48 @@ function renderModal(n) {
         ${extraFields}
         <div class="modal-links">${links}</div>
     `;
+}
+
+// ─── 태그 관리 ────────────────────────────────
+async function setTag(noticeId, tag) {
+    try {
+        const res = await fetch(`${API_BASE}/api/notice-tags/${noticeId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            // 모달 새로고침
+            const detailRes = await fetch(`${API_BASE}/api/notices/${noticeId}`);
+            const detail = await detailRes.json();
+            renderModal(detail);
+            // 제외 태그 시 목록에서 사라지므로 리로드
+            if (tag === '제외') loadNotices();
+        }
+    } catch (e) {
+        console.error('태그 설정 실패:', e);
+    }
+}
+
+async function removeTag(noticeId) {
+    try {
+        const res = await fetch(`${API_BASE}/api/notice-tags/${noticeId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            const detailRes = await fetch(`${API_BASE}/api/notices/${noticeId}`);
+            const detail = await detailRes.json();
+            renderModal(detail);
+            loadNotices();
+        }
+    } catch (e) {
+        console.error('태그 해제 실패:', e);
+    }
+}
+
+function getTagClass(tag) {
+    const map = { '입찰대상': 'tag-bid', '제외': 'tag-exclude', '검토요청': 'tag-review', '낙찰': 'tag-won', '유찰': 'tag-lost' };
+    return map[tag] || '';
 }
 
 function closeModal() {

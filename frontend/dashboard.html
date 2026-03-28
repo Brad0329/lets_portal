@@ -66,6 +66,24 @@
                 <div class="dash-card-count" id="dc-ongoing">-</div>
                 <div class="dash-card-sub">진행중인 공고</div>
             </a>
+            <a href="/review-list.html" class="dash-card">
+                <div class="dash-card-icon">🔍</div>
+                <div class="dash-card-title">검토요청 공고</div>
+                <div class="dash-card-count" id="dc-review">-</div>
+                <div class="dash-card-sub">검토 대기 중</div>
+            </a>
+            <a href="/bid-list.html" class="dash-card">
+                <div class="dash-card-icon">📌</div>
+                <div class="dash-card-title">입찰 예정 공고</div>
+                <div class="dash-card-count" id="dc-bid">-</div>
+                <div class="dash-card-sub">입찰대상 태그</div>
+            </a>
+            <a href="/excluded-list.html" class="dash-card">
+                <div class="dash-card-icon">🚫</div>
+                <div class="dash-card-title">제외된 공고</div>
+                <div class="dash-card-count" id="dc-excluded">-</div>
+                <div class="dash-card-sub">제외 처리된 공고</div>
+            </a>
             <a href="/index.html?status=all" class="dash-card">
                 <div class="dash-card-icon">📁</div>
                 <div class="dash-card-title">전체 공고</div>
@@ -124,6 +142,12 @@
                     </div>
                 `).join('');
                 document.getElementById('source-stats').innerHTML = statsHtml || '<div class="dash-info-row"><span class="dash-info-label">데이터 없음</span></div>';
+
+                // 태그별 건수 (stats API에 포함)
+                const tagStats = data.tag_stats || {};
+                document.getElementById('dc-review').textContent = (tagStats['검토요청'] || 0) + '건';
+                document.getElementById('dc-bid').textContent = (tagStats['입찰대상'] || 0) + '건';
+                document.getElementById('dc-excluded').textContent = (tagStats['제외'] || 0) + '건';
             } catch (e) {
                 console.error('통계 로드 실패:', e);
             }

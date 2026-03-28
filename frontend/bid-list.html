@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입찰 예정 공고 - LETS 프로젝트 관리</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <style>header { display: none; }</style>
+</head>
+<body>
+    <nav id="main-navbar"></nav>
+
+    <!-- 상세보기 모달 -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <main>
+        <h2 style="font-size:1.3rem;font-weight:600;color:#1a5276;margin-bottom:16px;">입찰 예정 공고</h2>
+
+        <!-- 검색/필터 -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="공고명, 기관명, 키워드 검색..." />
+            <select id="filter-source">
+                <option value="">전체 출처</option>
+                <option value="K-Startup">K-Startup</option>
+                <option value="중소벤처기업부">중소벤처기업부</option>
+                <option value="나라장터">나라장터</option>
+            </select>
+            <select id="filter-sort">
+                <option value="tagged">태그일 최신순</option>
+                <option value="deadline">마감임박순</option>
+                <option value="latest">입찰공고일 최신순</option>
+            </select>
+            <button class="btn" onclick="loadTaggedNotices()">검색</button>
+        </div>
+
+        <!-- 공고 목록 -->
+        <div id="notices-container">
+            <table id="notices-table">
+                <thead>
+                    <tr>
+                        <th class="col-source">출처</th>
+                        <th class="col-title">공고명</th>
+                        <th class="col-org">기관</th>
+                        <th class="col-date">마감일</th>
+                        <th class="col-status">상태</th>
+                        <th style="width:80px">태그</th>
+                    </tr>
+                </thead>
+                <tbody id="notices-body">
+                    <tr><td colspan="6" class="loading">데이터 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="pagination" class="pagination"></div>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
+        const TAG_FILTER = '입찰대상';
+        let tagPage = 1;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await checkAuth();
+            if (!user) return;
+            loadTaggedNotices();
+
+            document.getElementById('search-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') loadTaggedNotices();
+            });
+            ['filter-source', 'filter-sort'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    tagPage = 1;
+                    loadTaggedNotices();
+                });
+            });
+        });
+
+        async function loadTaggedNotices() {
+            const q = document.getElementById('search-input').value;
+            const source = document.getElementById('filter-source').value;
+            const sort = document.getElementById('filter-sort').value;
+
+            const params = new URLSearchParams({ tag: TAG_FILTER, q, source, sort, page: tagPage, size: 20 });
+            const tbody = document.getElementById('notices-body');
+            tbody.innerHTML = '<tr><td colspan="6" class="loading">검색 중...</td></tr>';
+
+            try {
+                const res = await fetch(`/api/notices/tagged?${params}`);
+                const data = await res.json();
+                currentNotices = data.notices;
+                renderTaggedNotices(data.notices);
+                renderTaggedPagination(data.total_pages, data.page);
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">데이터 로드 실패</td></tr>';
+            }
+        }
+
+        function renderTaggedNotices(notices) {
+            const tbody = document.getElementById('notices-body');
+            if (!notices || notices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">입찰 예정 공고가 없습니다.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = notices.map(n => {
+                const sourceClass = getSourceClass(n.source);
+                const statusBadge = n.status === 'ongoing'
+                    ? '<span class="badge badge-ongoing">진행중</span>'
+                    : '<span class="badge badge-closed">마감</span>';
+                const tagClass = getTagClass(n.tag);
+                return `<tr onclick="openModal(${n.id})">
+                    <td><span class="source-badge ${sourceClass}">${escapeHtml(n.source)}</span></td>
+                    <td>${escapeHtml(n.title)}</td>
+                    <td>${escapeHtml(n.organization || '')}</td>
+                    <td>${escapeHtml(n.end_date || '-')}</td>
+                    <td>${statusBadge}</td>
+                    <td><span class="tag-badge ${tagClass}">${escapeHtml(n.tag)}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderTaggedPagination(totalPages, current) {
+            const div = document.getElementById('pagination');
+            if (totalPages <= 1) { div.innerHTML = ''; return; }
+            let html = '';
+            if (current > 1) html += `<button onclick="goTagPage(${current - 1})">◀</button>`;
+            const start = Math.max(1, current - 4);
+            const end = Math.min(totalPages, current + 4);
+            for (let i = start; i <= end; i++) {
+                html += `<button class="${i === current ? 'active' : ''}" onclick="goTagPage(${i})">${i}</button>`;
+            }
+            if (current < totalPages) html += `<button onclick="goTagPage(${current + 1})">▶</button>`;
+            div.innerHTML = html;
+        }
+
+        function goTagPage(page) {
+            tagPage = page;
+            loadTaggedNotices();
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>

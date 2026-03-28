@@ -45,6 +45,9 @@ function renderNavbar() {
     const menuItems = [
         { href: '/dashboard.html', label: '대시보드', icon: '📊', show: true },
         { href: '/index.html', label: '공고 중인 사업', icon: '📋', show: true },
+        { href: '/review-list.html', label: '검토요청', icon: '🔍', show: true },
+        { href: '/bid-list.html', label: '입찰 예정', icon: '📌', show: isAdmin || hasPermission('bid_tag') },
+        { href: '/excluded-list.html', label: '제외 공고', icon: '🚫', show: isAdmin || hasPermission('bid_tag') },
         { href: '/settings.html', label: '설정', icon: '⚙️', show: isAdmin || hasPermission('display') || hasPermission('keyword') || hasPermission('org') },
     ];
 
