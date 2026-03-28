@@ -15,6 +15,9 @@
             width: 100%;
             max-width: 380px;
         }
+        .login-logo { text-align: center; margin-bottom: 8px; }
+        .login-logo img { height: 36px; width: auto; }
+        .logo-blue { filter: brightness(0) saturate(100%) invert(20%) sepia(40%) saturate(1200%) hue-rotate(175deg) brightness(90%); }
         .login-box h1 { text-align: center; font-size: 1.5rem; color: #1a5276; margin-bottom: 8px; }
         .login-box .subtitle { text-align: center; font-size: 0.85rem; color: #777; margin-bottom: 28px; }
         .login-box label { display: block; font-size: 0.85rem; color: #555; font-weight: 500; margin-bottom: 4px; }
@@ -39,7 +42,9 @@
     <div class="login-box">
         <!-- 로그인 폼 -->
         <div id="login-form">
-            <h1>LETS</h1>
+            <div class="login-logo">
+                <img src="/img/lets_logo.png" alt="LETS 렛츠" class="logo-blue" />
+            </div>
             <p class="subtitle">프로젝트 관리 시스템</p>
             <div id="login-error" class="login-error"></div>
             <label for="username">아이디</label>
@@ -51,7 +56,10 @@
 
         <!-- 비밀번호 변경 폼 -->
         <div id="change-pw-form" class="change-pw-form">
-            <h1>비밀번호 변경</h1>
+            <div class="login-logo">
+                <img src="/img/lets_logo.png" alt="LETS 렛츠" class="logo-blue" />
+            </div>
+            <h2 style="text-align:center;font-size:1.1rem;color:#555;margin-bottom:8px">비밀번호 변경</h2>
             <div class="info">초기 비밀번호 사용 중입니다. 새 비밀번호를 설정해주세요.</div>
             <div id="change-pw-error" class="login-error"></div>
             <label for="current-pw">현재 비밀번호</label>

@@ -58,7 +58,7 @@ function renderNavbar() {
     nav.innerHTML = `
         <div class="navbar-inner">
             <div class="navbar-brand">
-                <a href="/dashboard.html" class="brand-link">LETS</a>
+                <a href="/dashboard.html" class="brand-link"><img src="/img/lets_logo.png" alt="LETS 렛츠" class="brand-logo" /></a>
             </div>
             <div class="navbar-menu">${menuHtml}</div>
             <div class="navbar-user">
