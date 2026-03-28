@@ -1,10 +1,19 @@
 // 설정 페이지 JS
 const API_BASE = '';
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
-    loadKeywords();
-    loadOrganizations();
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await checkAuth();
+    if (!user) return;
+
+    // 권한에 따라 섹션 표시
+    if (hasPermission('display')) loadSettings();
+    if (hasPermission('keyword')) loadKeywords();
+    if (hasPermission('org')) loadOrganizations();
+
+    if (user.role === 'admin') {
+        document.getElementById('user-mgmt-section').style.display = '';
+        loadUsers();
+    }
 });
 
 // ─── 표시 설정 ───────────────────────────────
@@ -213,6 +222,145 @@ async function runCollect() {
         btn.classList.remove('collecting');
     }
 }
+
+// ─── 계정 관리 (관리자 전용) ─────────────────
+
+async function loadUsers() {
+    try {
+        const res = await fetch(`${API_BASE}/api/users`);
+        if (!res.ok) return;
+        const users = await res.json();
+        renderUsers(users);
+    } catch (e) {
+        console.error('사용자 목록 로드 실패:', e);
+    }
+}
+
+function renderUsers(users) {
+    const container = document.getElementById('user-list');
+    container.innerHTML = `
+        <table class="org-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>아이디</th>
+                    <th>이름</th>
+                    <th>역할</th>
+                    <th>권한</th>
+                    <th>생성일</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(u => {
+                    const perms = [];
+                    if (u.perm_bid_tag) perms.push('입찰');
+                    if (u.perm_display) perms.push('표시');
+                    if (u.perm_keyword) perms.push('키워드');
+                    if (u.perm_org) perms.push('기관');
+                    const permStr = u.role === 'admin' ? '전체' : (perms.join(', ') || '-');
+                    return `<tr>
+                        <td>${u.id}</td>
+                        <td>${escapeHtml(u.username)}</td>
+                        <td>${escapeHtml(u.name)}</td>
+                        <td>${u.role === 'admin' ? '관리자' : '실무자'}</td>
+                        <td style="font-size:0.8rem">${permStr}</td>
+                        <td style="font-size:0.8rem">${(u.created_at || '').slice(0, 10)}</td>
+                        <td>
+                            <button class="btn btn-sm" onclick="resetUserPw(${u.id})" style="font-size:0.75rem">PW초기화</button>
+                            ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-outline" onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" style="font-size:0.75rem;color:#e74c3c;border-color:#e74c3c">삭제</button>` : ''}
+                        </td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+async function createUser() {
+    const username = document.getElementById('new-user-id').value.trim();
+    const name = document.getElementById('new-user-name').value.trim();
+    const role = document.getElementById('new-user-role').value;
+    const msg = document.getElementById('user-msg');
+
+    if (!username || !name) { msg.textContent = '아이디와 이름을 입력하세요.'; msg.className = 'msg error'; return; }
+
+    const body = {
+        username, name, role,
+        perm_bid_tag: document.getElementById('new-perm-bid-tag').checked ? 1 : 0,
+        perm_display: document.getElementById('new-perm-display').checked ? 1 : 0,
+        perm_keyword: document.getElementById('new-perm-keyword').checked ? 1 : 0,
+        perm_org: document.getElementById('new-perm-org').checked ? 1 : 0,
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/api/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.error) { msg.textContent = data.error; msg.className = 'msg error'; return; }
+        msg.textContent = `계정 생성 완료! 초기 비밀번호: ${data.default_password}`;
+        msg.className = 'msg';
+        document.getElementById('new-user-id').value = '';
+        document.getElementById('new-user-name').value = '';
+        loadUsers();
+    } catch (e) {
+        msg.textContent = '생성 실패'; msg.className = 'msg error';
+    }
+}
+
+async function resetUserPw(userId) {
+    if (!confirm('비밀번호를 1234로 초기화하시겠습니까?')) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/users/${userId}/reset-password`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) alert('비밀번호가 1234로 초기화되었습니다.');
+    } catch (e) {
+        alert('초기화 실패');
+    }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`"${username}" 계정을 삭제하시겠습니까?`)) return;
+    try {
+        await fetch(`${API_BASE}/api/users/${userId}`, { method: 'DELETE' });
+        loadUsers();
+    } catch (e) {
+        alert('삭제 실패');
+    }
+}
+
+
+// ─── 비밀번호 변경 ─────────────────────────────
+
+async function changeMyPw() {
+    const cur = document.getElementById('my-cur-pw').value;
+    const newPw = document.getElementById('my-new-pw').value;
+    const confirm = document.getElementById('my-confirm-pw').value;
+    const msg = document.getElementById('pw-msg');
+
+    if (!cur || !newPw) { msg.textContent = '모든 필드를 입력하세요.'; msg.className = 'msg error'; return; }
+    if (newPw !== confirm) { msg.textContent = '새 비밀번호가 일치하지 않습니다.'; msg.className = 'msg error'; return; }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: cur, new_password: newPw }),
+        });
+        const data = await res.json();
+        if (data.error) { msg.textContent = data.error; msg.className = 'msg error'; return; }
+        msg.textContent = '비밀번호가 변경되었습니다.'; msg.className = 'msg';
+        document.getElementById('my-cur-pw').value = '';
+        document.getElementById('my-new-pw').value = '';
+        document.getElementById('my-confirm-pw').value = '';
+    } catch (e) {
+        msg.textContent = '변경 실패'; msg.className = 'msg error';
+    }
+}
+
 
 // ─── 유틸 ────────────────────────────────────
 function escapeHtml(text) {

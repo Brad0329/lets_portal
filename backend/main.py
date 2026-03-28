@@ -1,15 +1,20 @@
 """
-입찰공고 포탈서비스 - FastAPI 백엔드
+LETS 프로젝트 관리 시스템 - FastAPI 백엔드
 """
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse
 from contextlib import asynccontextmanager
 import logging
 import os
 
-from database import init_db, get_connection
+from database import init_db, get_connection, hash_password, verify_password
+from auth import (
+    create_session, get_current_user, require_login, require_admin,
+    has_permission, delete_session, cleanup_expired_sessions,
+)
 from collectors.collect_all import collect_all
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -26,6 +31,7 @@ async def lifespan(app: FastAPI):
     from apscheduler.schedulers.background import BackgroundScheduler
     scheduler = BackgroundScheduler()
     scheduler.add_job(collect_all, 'cron', hour='9,14', minute=0, id='auto_collect')
+    scheduler.add_job(cleanup_expired_sessions, 'cron', hour=3, minute=0, id='session_cleanup')
     scheduler.start()
     logger.info("자동 수집 스케줄러 시작 (매일 09:00, 14:00)")
 
@@ -36,9 +42,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="입찰공고 포탈서비스",
-    description="주요 입찰/사업공고 통합 검색 서비스",
-    version="0.1.0",
+    title="LETS 프로젝트 관리 시스템",
+    description="입찰공고 통합 검색 및 프로젝트 관리",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -48,33 +54,252 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
+
+
+# ─── 인증 API ─────────────────────────────────────
+
+@app.post("/api/auth/login")
+def login(request: Request, username: str = Body(...), password: str = Body(...)):
+    """로그인 → 세션 쿠키 발급"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row or not verify_password(password, row["password_hash"]):
+        return JSONResponse(status_code=401, content={"error": "아이디 또는 비밀번호가 올바르지 않습니다."})
+
+    user = dict(row)
+    token = create_session(user["id"])
+
+    response = JSONResponse(content={
+        "success": True,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "name": user["name"],
+            "role": user["role"],
+            "must_change_pw": user["must_change_pw"],
+        },
+    })
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=86400,
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request):
+    """로그아웃 → 세션 삭제"""
+    token = request.cookies.get("session_token")
+    if token:
+        delete_session(token)
+    response = JSONResponse(content={"success": True})
+    response.delete_cookie("session_token")
+    return response
+
+
+@app.get("/api/auth/me")
+def get_me(request: Request):
+    """현재 로그인 사용자 정보"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "로그인이 필요합니다."})
+    return {"user": user}
+
+
+@app.post("/api/auth/change-password")
+def change_password(
+    request: Request,
+    current_password: str = Body(...),
+    new_password: str = Body(...),
+):
+    """비밀번호 변경"""
+    user = require_login(request)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],))
+    row = cursor.fetchone()
+
+    if not verify_password(current_password, row["password_hash"]):
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": "현재 비밀번호가 올바르지 않습니다."})
+
+    if len(new_password) < 4:
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": "새 비밀번호는 4자 이상이어야 합니다."})
+
+    cursor.execute(
+        "UPDATE users SET password_hash=?, must_change_pw=0, updated_at=datetime('now') WHERE id=?",
+        (hash_password(new_password), user["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+# ─── 계정 관리 API (관리자 전용) ──────────────────
+
+@app.get("/api/users")
+def list_users(request: Request):
+    """사용자 목록 조회"""
+    require_admin(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, name, role, must_change_pw, perm_bid_tag, perm_display, perm_keyword, perm_org, created_at FROM users ORDER BY id")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return users
+
+
+@app.post("/api/users")
+def create_user(
+    request: Request,
+    username: str = Body(...),
+    name: str = Body(...),
+    role: str = Body(default="staff"),
+    perm_bid_tag: int = Body(default=0),
+    perm_display: int = Body(default=0),
+    perm_keyword: int = Body(default=0),
+    perm_org: int = Body(default=0),
+):
+    """계정 생성 (관리자 전용) — 기본 비밀번호 '1234'"""
+    require_admin(request)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE username=?", (username,))
+    if cursor.fetchone():
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": f"'{username}' 아이디가 이미 존재합니다."})
+
+    cursor.execute(
+        """INSERT INTO users (username, name, password_hash, role, must_change_pw,
+           perm_bid_tag, perm_display, perm_keyword, perm_org) VALUES (?,?,?,?,1,?,?,?,?)""",
+        (username, name, hash_password("1234"), role, perm_bid_tag, perm_display, perm_keyword, perm_org),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return {"success": True, "id": new_id, "username": username, "default_password": "1234"}
+
+
+@app.put("/api/users/{user_id}")
+def update_user(
+    request: Request,
+    user_id: int,
+    name: str = Body(default=None),
+    role: str = Body(default=None),
+    perm_bid_tag: int = Body(default=None),
+    perm_display: int = Body(default=None),
+    perm_keyword: int = Body(default=None),
+    perm_org: int = Body(default=None),
+):
+    """계정 정보 수정 (관리자 전용)"""
+    require_admin(request)
+
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if role is not None:
+        updates["role"] = role
+    if perm_bid_tag is not None:
+        updates["perm_bid_tag"] = perm_bid_tag
+    if perm_display is not None:
+        updates["perm_display"] = perm_display
+    if perm_keyword is not None:
+        updates["perm_keyword"] = perm_keyword
+    if perm_org is not None:
+        updates["perm_org"] = perm_org
+
+    if not updates:
+        return {"error": "변경할 항목이 없습니다."}
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    sets = ", ".join(f"{k}=?" for k in updates)
+    cursor.execute(f"UPDATE users SET {sets}, updated_at=datetime('now') WHERE id=?",
+                   (*updates.values(), user_id))
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.post("/api/users/{user_id}/reset-password")
+def reset_password(request: Request, user_id: int):
+    """비밀번호 초기화 (관리자 전용) → '1234'로 리셋"""
+    require_admin(request)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET password_hash=?, must_change_pw=1, updated_at=datetime('now') WHERE id=?",
+        (hash_password("1234"), user_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True, "default_password": "1234"}
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user(request: Request, user_id: int):
+    """계정 삭제 (관리자 전용)"""
+    admin = require_admin(request)
+    if admin["id"] == user_id:
+        return JSONResponse(status_code=400, content={"error": "자기 자신은 삭제할 수 없습니다."})
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+    cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return {"success": affected > 0}
 
 
 # ─── 공고 검색/조회 API ─────────────────────────────
 
 @app.get("/api/notices")
 def get_notices(
+    request: Request,
     q: str = Query(default="", description="검색어"),
-    source: str = Query(default="", description="출처 필터 (K-Startup, 중소벤처기업부, 나라장터)"),
-    status: str = Query(default="", description="상태 (ongoing, closed, all)"),
-    sort: str = Query(default="deadline", description="정렬 (deadline, latest)"),
+    source: str = Query(default="", description="출처 필터"),
+    status: str = Query(default="", description="상태"),
+    sort: str = Query(default="deadline", description="정렬"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
     """공고 목록 조회 (검색 + 필터 + 페이지네이션)"""
+    require_login(request)
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 설정에서 기본값 로드
     if not status:
         cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='status_filter'")
         row = cursor.fetchone()
         status = row[0] if row else "ongoing"
 
-    # WHERE 절 빌드
+    # 조회 기간 (입찰공고일 기준)
+    cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
+    row = cursor.fetchone()
+    date_range_days = int(row[0]) if row else 30
+
     conditions = []
     params = []
+
+    # 입찰공고일 기준 최근 N일 필터
+    conditions.append("start_date >= date('now', ?)")
+    params.append(f"-{date_range_days} days")
 
     if status and status != "all":
         conditions.append("status = ?")
@@ -91,17 +316,14 @@ def get_notices(
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-    # 정렬
     if sort == "deadline":
         order = "CASE WHEN end_date = '' THEN 1 ELSE 0 END, end_date ASC"
     else:
-        order = "collected_at DESC"
+        order = "CASE WHEN start_date = '' THEN 1 ELSE 0 END, start_date DESC"
 
-    # 전체 건수
     cursor.execute(f"SELECT COUNT(*) FROM bid_notices WHERE {where_clause}", params)
     total = cursor.fetchone()[0]
 
-    # 페이지네이션
     offset = (page - 1) * size
     cursor.execute(
         f"SELECT * FROM bid_notices WHERE {where_clause} ORDER BY {order} LIMIT ? OFFSET ?",
@@ -122,8 +344,10 @@ def get_notices(
 
 
 @app.get("/api/notices/stats")
-def get_stats():
+def get_stats(request: Request):
     """소스별 통계"""
+    require_login(request)
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -148,8 +372,10 @@ def get_stats():
 # ─── 공고 상세 조회 API ──────────────────────────
 
 @app.get("/api/notices/{notice_id}")
-def get_notice_detail(notice_id: int):
-    """공고 상세 조회 — DB에 확장 필드 없으면 K-Startup API 실시간 조회"""
+def get_notice_detail(request: Request, notice_id: int):
+    """공고 상세 조회"""
+    require_login(request)
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM bid_notices WHERE id=?", (notice_id,))
@@ -161,7 +387,6 @@ def get_notice_detail(notice_id: int):
 
     notice = dict(row)
 
-    # K-Startup 공고인데 확장 필드가 비어있으면 API에서 실시간 보충
     if notice["source"] == "K-Startup" and not notice.get("content"):
         try:
             detail = _fetch_kstartup_detail(notice["bid_no"])
@@ -230,8 +455,10 @@ def _update_notice_detail(notice_id: int, detail: dict):
 # ─── 설정 API ────────────────────────────────────
 
 @app.get("/api/settings")
-def get_settings():
+def get_settings(request: Request):
     """현재 표시 설정 조회"""
+    require_login(request)
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM display_settings")
@@ -241,8 +468,12 @@ def get_settings():
 
 
 @app.put("/api/settings/{key}")
-def update_setting(key: str, value: str = Query(...)):
-    """설정값 변경"""
+def update_setting(request: Request, key: str, value: str = Query(...)):
+    """설정값 변경 (관리자 또는 perm_display 권한)"""
+    user = require_login(request)
+    if not has_permission(user, "display"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="표시 설정 변경 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -261,8 +492,12 @@ def update_setting(key: str, value: str = Query(...)):
 # ─── 키워드 관리 API ─────────────────────────────
 
 @app.get("/api/keywords")
-def get_keywords():
+def get_keywords(request: Request):
     """키워드 목록 조회"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM keywords ORDER BY keyword_group, keyword")
@@ -272,8 +507,12 @@ def get_keywords():
 
 
 @app.put("/api/keywords/{keyword_id}/toggle")
-def toggle_keyword(keyword_id: int):
+def toggle_keyword(request: Request, keyword_id: int):
     """키워드 활성/비활성 토글"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE keywords SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END WHERE id=?", (keyword_id,))
@@ -285,11 +524,14 @@ def toggle_keyword(keyword_id: int):
 
 
 @app.post("/api/keywords")
-def add_keyword(keyword: str = Query(...), keyword_group: str = Query(default="사용자 추가")):
+def add_keyword(request: Request, keyword: str = Query(...), keyword_group: str = Query(default="사용자 추가")):
     """키워드 추가"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
-    # 중복 체크
     cursor.execute("SELECT id FROM keywords WHERE keyword=?", (keyword.strip(),))
     if cursor.fetchone():
         conn.close()
@@ -307,8 +549,12 @@ def add_keyword(keyword: str = Query(...), keyword_group: str = Query(default="�
 
 
 @app.delete("/api/keywords/{keyword_id}")
-def delete_keyword(keyword_id: int):
+def delete_keyword(request: Request, keyword_id: int):
     """키워드 삭제"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM keywords WHERE id=?", (keyword_id,))
@@ -321,8 +567,12 @@ def delete_keyword(keyword_id: int):
 # ─── 기관 관리 API ────────────────────────────────
 
 @app.get("/api/organizations")
-def get_organizations():
+def get_organizations(request: Request):
     """기관 목록 조회"""
+    user = require_login(request)
+    if not has_permission(user, "org"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="기관 목록 조회 권한이 없습니다.")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM organizations ORDER BY category, name")
@@ -334,8 +584,9 @@ def get_organizations():
 # ─── 수집 실행 API ────────────────────────────────
 
 @app.post("/api/collect")
-def run_collect():
-    """수동으로 전체 수집 실행"""
+def run_collect(request: Request):
+    """수동으로 전체 수집 실행 (관리자 전용)"""
+    require_admin(request)
     results = collect_all()
     return {"results": results}
 
@@ -343,8 +594,9 @@ def run_collect():
 # ─── 스케줄러 상태 API ────────────────────────────
 
 @app.get("/api/scheduler")
-def get_scheduler_status():
+def get_scheduler_status(request: Request):
     """스케줄러 상태 조회"""
+    require_login(request)
     return {
         "schedule": "매일 09:00, 14:00 자동 수집",
         "status": "running",
@@ -355,11 +607,18 @@ def get_scheduler_status():
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):
-    from fastapi.responses import FileResponse
+    # 명시적 HTML 페이지 라우트
+    @app.get("/login.html")
+    def login_page():
+        return FileResponse(os.path.join(frontend_dir, "login.html"))
 
     @app.get("/settings.html")
     def settings_page():
         return FileResponse(os.path.join(frontend_dir, "settings.html"))
+
+    @app.get("/dashboard.html")
+    def dashboard_page():
+        return FileResponse(os.path.join(frontend_dir, "dashboard.html"))
 
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

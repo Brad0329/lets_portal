@@ -5,7 +5,10 @@ let currentPage = 1;
 let currentNotices = [];  // 모달용 데이터 저장
 
 // ─── 초기 로드 ───────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await checkAuth();
+    if (!user) return;
+
     loadStats();
     loadNotices();
 

@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import bcrypt
 from config import DB_PATH
 
 
@@ -11,9 +12,50 @@ def get_connection():
     return conn
 
 
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
+
+    cursor.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'staff',
+            must_change_pw INTEGER DEFAULT 1,
+            perm_bid_tag INTEGER DEFAULT 0,
+            perm_display INTEGER DEFAULT 0,
+            perm_keyword INTEGER DEFAULT 0,
+            perm_org INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+    """)
+
+    # 초기 관리자 계정 (admin / admin1234)
+    cursor.execute("SELECT id FROM users WHERE username='admin'")
+    if not cursor.fetchone():
+        cursor.execute(
+            "INSERT INTO users (username, name, password_hash, role, must_change_pw) VALUES (?, ?, ?, ?, ?)",
+            ("admin", "관리자", hash_password("admin1234"), "admin", 0),
+        )
 
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS bid_notices (
@@ -84,8 +126,8 @@ def init_db():
     # 설정 초기값 삽입 (없을 때만)
     defaults = [
         ("status_filter", "ongoing", "진행중만=ongoing, 전체=all"),
-        ("date_range_days", "30", "최근 N일 이내 공고 표시"),
-        ("sort_order", "deadline", "마감임박순=deadline, 최신순=latest"),
+        ("date_range_days", "30", "입찰공고 최근 N일 이내 표시"),
+        ("sort_order", "deadline", "마감임박순=deadline, 입찰공고일 최신순=latest"),
         ("items_per_page", "20", "페이지당 표시 건수"),
     ]
     for key, value, desc in defaults:

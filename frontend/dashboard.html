@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - LETS 프로젝트 관리</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <style>
+        /* header 제거 — navbar로 대체 */
+        header { display: none; }
+
+        .dashboard-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1a5276;
+            margin-bottom: 20px;
+        }
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .dash-card {
+            background: white;
+            border-radius: 10px;
+            padding: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .dash-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .dash-card-icon { font-size: 2rem; margin-bottom: 8px; }
+        .dash-card-title { font-size: 1rem; font-weight: 600; color: #333; margin-bottom: 4px; }
+        .dash-card-count { font-size: 1.8rem; font-weight: 700; color: #2980b9; }
+        .dash-card-sub { font-size: 0.82rem; color: #999; margin-top: 4px; }
+
+        .dash-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+        }
+        .dash-section h3 { font-size: 0.95rem; color: #1a5276; margin-bottom: 12px; }
+        .dash-info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.88rem; border-bottom: 1px solid #f0f0f0; }
+        .dash-info-row:last-child { border-bottom: none; }
+        .dash-info-label { color: #777; }
+        .dash-info-value { font-weight: 500; color: #333; }
+    </style>
+</head>
+<body>
+    <nav id="main-navbar"></nav>
+
+    <main>
+        <h2 class="dashboard-title">대시보드</h2>
+
+        <div class="dashboard-cards">
+            <a href="/index.html" class="dash-card">
+                <div class="dash-card-icon">📋</div>
+                <div class="dash-card-title">공고 중인 사업</div>
+                <div class="dash-card-count" id="dc-ongoing">-</div>
+                <div class="dash-card-sub">진행중인 공고</div>
+            </a>
+            <a href="/index.html?status=all" class="dash-card">
+                <div class="dash-card-icon">📁</div>
+                <div class="dash-card-title">전체 공고</div>
+                <div class="dash-card-count" id="dc-total">-</div>
+                <div class="dash-card-sub">수집된 전체 공고</div>
+            </a>
+        </div>
+
+        <div class="dash-section">
+            <h3>출처별 현황</h3>
+            <div id="source-stats"></div>
+        </div>
+
+        <div class="dash-section">
+            <h3>시스템 정보</h3>
+            <div class="dash-info-row">
+                <span class="dash-info-label">마지막 수집</span>
+                <span class="dash-info-value" id="last-collected">-</span>
+            </div>
+            <div class="dash-info-row">
+                <span class="dash-info-label">자동 수집 스케줄</span>
+                <span class="dash-info-value">매일 09:00, 14:00</span>
+            </div>
+            <div class="dash-info-row">
+                <span class="dash-info-label">로그인 사용자</span>
+                <span class="dash-info-value" id="login-user">-</span>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await checkAuth();
+            if (!user) return;
+
+            document.getElementById('login-user').textContent = `${user.name} (${user.role === 'admin' ? '관리자' : '실무자'})`;
+
+            // 통계 로드
+            try {
+                const res = await fetch('/api/notices/stats');
+                const data = await res.json();
+
+                const ongoing = data.by_source.reduce((sum, s) => sum + (s.ongoing || 0), 0);
+                document.getElementById('dc-ongoing').textContent = ongoing + '건';
+                document.getElementById('dc-total').textContent = data.grand_total + '건';
+
+                const lastUpdate = data.last_collected ? new Date(data.last_collected).toLocaleString('ko-KR') : '-';
+                document.getElementById('last-collected').textContent = lastUpdate;
+
+                // 출처별 현황
+                const statsHtml = data.by_source.map(s => `
+                    <div class="dash-info-row">
+                        <span class="dash-info-label">${escapeHtmlNav(s.source)}</span>
+                        <span class="dash-info-value">전체 ${s.total}건 / 진행중 ${s.ongoing || 0}건</span>
+                    </div>
+                `).join('');
+                document.getElementById('source-stats').innerHTML = statsHtml || '<div class="dash-info-row"><span class="dash-info-label">데이터 없음</span></div>';
+            } catch (e) {
+                console.error('통계 로드 실패:', e);
+            }
+        });
+    </script>
+</body>
+</html>

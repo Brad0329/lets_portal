@@ -1,0 +1,77 @@
+/* 네비게이션 바 */
+#main-navbar {
+    background: linear-gradient(135deg, #1a5276, #2980b9);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.navbar-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 56px;
+    gap: 24px;
+}
+.navbar-brand .brand-link {
+    color: white;
+    text-decoration: none;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.navbar-menu {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+}
+.nav-link {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.nav-link:hover { background: rgba(255,255,255,0.12); color: white; }
+.nav-link.active { background: rgba(255,255,255,0.2); color: white; font-weight: 600; }
+
+.navbar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+.user-info {
+    color: rgba(255,255,255,0.9);
+    font-size: 0.85rem;
+}
+.user-role {
+    display: inline-block;
+    padding: 1px 6px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    font-size: 0.72rem;
+    margin-left: 4px;
+}
+.btn-logout {
+    padding: 5px 12px;
+    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.9);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+}
+.btn-logout:hover { background: rgba(255,255,255,0.25); color: white; }
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .navbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 8px; }
+    .navbar-menu { order: 3; width: 100%; overflow-x: auto; }
+    .user-info { font-size: 0.78rem; }
+}

@@ -3,19 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>입찰공고 포탈서비스</title>
+    <title>공고 중인 사업 - LETS 프로젝트 관리</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <style>header { display: none; }</style>
 </head>
 <body>
-    <header>
-        <div class="header-top">
-            <div>
-                <h1>📋 입찰공고 포탈서비스</h1>
-                <p class="subtitle">주요 기관 입찰·사업공고 통합 검색</p>
-            </div>
-            <a href="/settings.html" class="header-settings">⚙️ 설정</a>
-        </div>
-    </header>
+    <nav id="main-navbar"></nav>
 
     <!-- 상세보기 모달 -->
     <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
@@ -50,7 +44,7 @@
             </select>
             <select id="filter-sort">
                 <option value="deadline">마감임박순</option>
-                <option value="latest">최신순</option>
+                <option value="latest">입찰공고일 최신순</option>
             </select>
             <button class="btn" onclick="loadNotices()">검색</button>
         </div>
@@ -79,6 +73,7 @@
         <div id="pagination" class="pagination"></div>
     </main>
 
+    <script src="/js/auth.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

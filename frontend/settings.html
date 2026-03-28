@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>설정 - 입찰공고 포탈서비스</title>
+    <title>설정 - LETS 프로젝트 관리</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/settings.css">
+    <style>header { display: none; }</style>
 </head>
 <body>
-    <header>
-        <h1>⚙️ 초기화면 설정</h1>
-        <p class="subtitle">키워드, 기간, 표시 옵션 관리</p>
-        <nav class="header-nav">
-            <a href="/">← 메인으로</a>
-        </nav>
-    </header>
+    <nav id="main-navbar"></nav>
 
     <main>
         <!-- 표시 설정 -->
@@ -30,14 +26,14 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label>조회 기간 (일)</label>
+                    <label>입찰공고 최근 (일)</label>
                     <input type="number" id="set-date-range" min="7" max="365" value="30" />
                 </div>
                 <div class="setting-item">
                     <label>정렬 기준</label>
                     <select id="set-sort-order">
                         <option value="deadline">마감임박순</option>
-                        <option value="latest">최신순</option>
+                        <option value="latest">입찰공고일 최신순</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -84,8 +80,47 @@
             <button class="btn" id="btn-collect" onclick="runCollect()">🔄 수집 실행</button>
             <span id="collect-msg" class="msg"></span>
         </section>
+
+        <!-- 계정 관리 (관리자 전용) -->
+        <section class="settings-section" id="user-mgmt-section" style="display:none">
+            <h2>👤 계정 관리</h2>
+            <div class="keyword-controls" style="margin-bottom:16px">
+                <input type="text" id="new-user-id" placeholder="아이디" class="keyword-input" style="width:120px" />
+                <input type="text" id="new-user-name" placeholder="이름" class="keyword-input" style="width:100px" />
+                <select id="new-user-role" class="keyword-group-select">
+                    <option value="staff">실무자</option>
+                    <option value="admin">관리자</option>
+                </select>
+                <button class="btn btn-sm" onclick="createUser()">+ 계정 생성</button>
+                <span id="user-msg" class="msg"></span>
+            </div>
+            <div id="user-perm-checks" style="margin-bottom:12px; font-size:0.85rem; color:#555;">
+                추가 권한:
+                <label><input type="checkbox" id="new-perm-bid-tag"> 입찰예정/제외</label>
+                <label><input type="checkbox" id="new-perm-display"> 표시 설정</label>
+                <label><input type="checkbox" id="new-perm-keyword"> 키워드 관리</label>
+                <label><input type="checkbox" id="new-perm-org"> 기관 목록</label>
+            </div>
+            <div id="user-list"></div>
+        </section>
+
+        <!-- 내 정보 -->
+        <section class="settings-section">
+            <h2>🔑 비밀번호 변경</h2>
+            <div style="max-width:300px">
+                <label style="display:block;font-size:0.85rem;color:#555;margin-bottom:4px">현재 비밀번호</label>
+                <input type="password" id="my-cur-pw" style="width:100%;padding:8px 10px;border:1px solid #d0d5dd;border-radius:6px;margin-bottom:10px" />
+                <label style="display:block;font-size:0.85rem;color:#555;margin-bottom:4px">새 비밀번호</label>
+                <input type="password" id="my-new-pw" style="width:100%;padding:8px 10px;border:1px solid #d0d5dd;border-radius:6px;margin-bottom:10px" />
+                <label style="display:block;font-size:0.85rem;color:#555;margin-bottom:4px">새 비밀번호 확인</label>
+                <input type="password" id="my-confirm-pw" style="width:100%;padding:8px 10px;border:1px solid #d0d5dd;border-radius:6px;margin-bottom:12px" />
+                <button class="btn" onclick="changeMyPw()">비밀번호 변경</button>
+                <span id="pw-msg" class="msg"></span>
+            </div>
+        </section>
     </main>
 
+    <script src="/js/auth.js"></script>
     <script src="/js/settings.js"></script>
 </body>
 </html>
