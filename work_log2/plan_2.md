@@ -210,6 +210,7 @@ data/
 #### 배경
 - 기존: "수집 실행" 버튼 하나로 3개 출처 일괄 수집 → 느리고 비직관적
 - 변경: 출처별 독립 관리 — 개별 수집, 출처별 키워드, 진행 상태 표시
+- 추가: 창조경제혁신센터(CCEI) 4번째 출처 — 통합사이트 JSON API(`/service/business_list.json`) 활용
 
 #### UI 구성 (`source-list.html`)
 
@@ -229,6 +230,10 @@ data/
 │ 중소벤처기업부               마지막 수집: 03/29 10:29      │
 │ [수집]                      57건 수집됨                   │
 │ 키워드: (공통 키워드 사용) [+추가] [관리]                  │
+├─────────────────────────────────────────────────────────┤
+│ 창조경제혁신센터(CCEI)        마지막 수집: 03/29 10:31      │
+│ [수집]                      124건 수집됨                  │
+│ 키워드: 창업, 지원, 청년, ... [+추가] [관리]              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -237,8 +242,8 @@ data/
 ```sql
 CREATE TABLE collect_sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,          -- 출처명 (나라장터, K-Startup, 중소벤처기업부)
-    collector_type TEXT NOT NULL,       -- 수집기 타입 (nara, kstartup, mss_biz)
+    name TEXT NOT NULL UNIQUE,          -- 출처명 (나라장터, K-Startup, 중소벤처기업부, 창조경제혁신센터)
+    collector_type TEXT NOT NULL,       -- 수집기 타입 (nara, kstartup, mss_biz, ccei)
     is_active INTEGER DEFAULT 1,       -- 활성/비활성
     last_collected_at TEXT,             -- 마지막 수집 일시
     last_collected_count INTEGER,       -- 마지막 수집 건수
@@ -280,13 +285,14 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 
 #### 기존 코드 변경 사항
 - `collect_all()` → 출처별 `collect_by_source(source_id)` 로 분리
-- 각 수집기(nara, kstartup, mss_biz)는 키워드를 파라미터로 받도록 유지
+- 각 수집기(nara, kstartup, mss_biz, ccei)는 키워드를 파라미터로 받도록 유지
+- 창조경제혁신센터(CCEI) 수집기 신규 작성: `ccei.creativekorea.or.kr/service/business_list.json` POST 호출
 - 기존 설정 페이지의 키워드 관리 → 출처 관리 페이지로 이동
 - 공고 중인 사업 페이지에서 "수집 실행" 버튼 제거
 - 네비게이션: 대시보드 옆에 "공고수집 출처" 메뉴 추가
 
 #### 구현 항목
-- [ ] `collect_sources` 테이블 생성 + 초기 데이터 (나라장터, K-Startup, 중소벤처기업부)
+- [ ] `collect_sources` 테이블 생성 + 초기 데이터 (나라장터, K-Startup, 중소벤처기업부, 창조경제혁신센터)
 - [ ] `keywords` 테이블에 `source_id` 컬럼 추가 + 기존 키워드 마이그레이션
 - [ ] 출처 관리 API (CRUD + 수집 실행)
 - [ ] 출처별 키워드 API
@@ -294,6 +300,7 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [ ] 출처별 수집 실행 + 진행 상태 표시
 - [ ] 네비게이션 메뉴 추가
 - [ ] 기존 "수집 실행" 버튼 제거
+- [ ] 창조경제혁신센터(CCEI) 수집기 구현 (`/service/business_list.json` POST)
 - [ ] 대시보드에 출처별 수집 상태 표시
 
 ### Phase B: 입찰 준비 페이지
