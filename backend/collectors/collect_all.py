@@ -1,5 +1,5 @@
 """
-전체 수집기 실행 (K-Startup + 중소벤처기업부 + 나라장터 + 창조경제혁신센터)
+전체 수집기 실행 (K-Startup + 중소벤처기업부 + 나라장터 + 창조경제혁신센터 + 개별기관 스크래퍼)
 """
 
 import logging
@@ -12,6 +12,7 @@ from collectors.kstartup import collect_and_save as collect_kstartup
 from collectors.mss_biz import collect_and_save as collect_mss
 from collectors.nara import collect_and_save as collect_nara
 from collectors.ccei import collect_and_save as collect_ccei
+from collectors.generic_scraper import collect_all_scrapers
 from database import get_connection
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,8 @@ def collect_by_source(source_id: int, mode: str = "daily") -> dict:
     collector_fn = COLLECTOR_MAP.get(ctype)
 
     if not collector_fn:
+        if ctype == "scraper":
+            return {"error": "스크래퍼 출처는 일괄 수집(/api/scrapers/collect)을 사용하세요."}
         return {"error": f"수집기 타입 '{ctype}'에 대한 수집기가 없습니다."}
 
     # 키워드 로드
@@ -87,10 +90,11 @@ def collect_by_source(source_id: int, mode: str = "daily") -> dict:
 
 
 def collect_all():
-    """모든 활성 출처 수집 실행"""
+    """모든 활성 출처 수집 실행 (API 출처 + 스크래퍼)"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM collect_sources WHERE is_active=1 ORDER BY id")
+    # API 기반 출처만 (scraper 타입 제외)
+    cursor.execute("SELECT id FROM collect_sources WHERE is_active=1 AND collector_type != 'scraper' ORDER BY id")
     source_ids = [row[0] for row in cursor.fetchall()]
     conn.close()
 
@@ -103,6 +107,21 @@ def collect_all():
             logger.error(f"❌ {src_name}: {r['error']}")
         else:
             logger.info(f"✅ {src_name}: {r['collected']}건 수집")
+
+    # 스크래퍼 일괄 실행
+    try:
+        scraper_result = collect_all_scrapers(mode="daily")
+        results.append({
+            "source": "개별기관 스크래퍼",
+            "collected": scraper_result.get("collected", 0),
+            "inserted": scraper_result.get("inserted", 0),
+            "updated": 0,
+            "matched": scraper_result.get("matched", 0),
+            "detail": scraper_result,
+        })
+    except Exception as e:
+        logger.error(f"❌ 스크래퍼 일괄 실행 실패: {e}")
+        results.append({"source": "개별기관 스크래퍼", "collected": 0, "inserted": 0, "updated": 0, "error": str(e)})
 
     return results
 

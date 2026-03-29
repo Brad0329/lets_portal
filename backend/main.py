@@ -917,9 +917,14 @@ def add_source_keyword(
 # ─── 수집 실행 API ────────────────────────────────
 
 @app.post("/api/collect")
-def run_collect(request: Request):
-    """수동으로 전체 수집 실행 (관리자 전용) — 하위호환"""
+def run_collect(request: Request, target: str = Query(default="all")):
+    """수집 실행 (관리자 전용). target: all=전체, scrapers=개별기관 스크래퍼만"""
     require_admin(request)
+
+    if target == "scrapers":
+        from collectors.generic_scraper import collect_all_scrapers
+        return collect_all_scrapers(mode="daily")
+
     results = collect_all()
     return {"results": results}
 
@@ -962,4 +967,4 @@ if os.path.isdir(frontend_dir):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)

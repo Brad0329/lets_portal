@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadAll() {
     await Promise.all([loadSources(), loadCommonKeywords()]);
     renderSources();
+    renderScraperSection();
     renderCommonKeywords();
 }
 
@@ -41,12 +42,14 @@ async function loadSources() {
 
 function renderSources() {
     const container = document.getElementById('source-list');
-    if (!allSources.length) {
+    // scraper 타입은 별도 섹션에서 처리
+    const apiSources = allSources.filter(s => s.collector_type !== 'scraper');
+    if (!apiSources.length) {
         container.innerHTML = '<p style="color:#999">등록된 출처가 없습니다.</p>';
         return;
     }
 
-    container.innerHTML = allSources.map(s => {
+    container.innerHTML = apiSources.map(s => {
         const inactive = s.is_active ? '' : ' inactive';
         const lastAt = s.last_collected_at ? formatDateTime(s.last_collected_at) : '수집 이력 없음';
         // 수집 결과 메시지가 있으면 우선 표시
@@ -217,6 +220,91 @@ async function collectSource(sourceId, mode = 'daily') {
         collectResults[sourceId] = { text: '수집 실패: ' + e.message, color: '#e74c3c' };
         progressBar.classList.remove('indeterminate');
         progressWrap.classList.remove('active');
+    }
+}
+
+// ─── 스크래퍼 섹션 ──────────────────────────────
+
+function renderScraperSection() {
+    const scrapers = allSources.filter(s => s.collector_type === 'scraper');
+    const countEl = document.getElementById('scraper-count');
+    const listEl = document.getElementById('scraper-list');
+    const sectionEl = document.getElementById('scraper-section');
+
+    if (!scrapers.length) {
+        sectionEl.style.display = 'none';
+        return;
+    }
+    sectionEl.style.display = '';
+    countEl.textContent = `(${scrapers.length}개 기관)`;
+
+    listEl.innerHTML = scrapers.map(s => {
+        const lastAt = s.last_collected_at ? formatDateTime(s.last_collected_at) : '-';
+        const cnt = s.last_collected_count != null ? `${s.last_collected_count}건` : '';
+        return `<div class="scraper-item">
+            <span class="scraper-item-name">${escapeHtml(s.name)}</span>
+            <span class="scraper-item-meta">${lastAt} ${cnt}</span>
+        </div>`;
+    }).join('');
+}
+
+function toggleScraperList() {
+    const list = document.getElementById('scraper-list');
+    const icon = document.getElementById('scraper-toggle-icon');
+    if (list.style.display === 'none') {
+        list.style.display = 'grid';
+        icon.innerHTML = '&#9660;';
+    } else {
+        list.style.display = 'none';
+        icon.innerHTML = '&#9654;';
+    }
+}
+
+async function collectAllScrapers() {
+    const btn = document.getElementById('btn-scraper-collect');
+    const resultEl = document.getElementById('scraper-result');
+    const progressWrap = document.getElementById('scraper-progress-wrap');
+    const progressBar = document.getElementById('scraper-progress-bar');
+
+    btn.disabled = true;
+    btn.textContent = '수집중...';
+    btn.classList.add('collecting');
+    resultEl.textContent = '';
+
+    progressWrap.classList.add('active');
+    progressBar.classList.add('indeterminate');
+
+    try {
+        const resp = await fetch('/api/collect?target=scrapers', { method: 'POST' });
+        const data = await resp.json();
+
+        progressBar.classList.remove('indeterminate');
+        progressBar.style.width = '100%';
+
+        if (data.error) {
+            resultEl.style.color = '#e74c3c';
+            resultEl.textContent = `오류: ${data.error}`;
+        } else {
+            resultEl.style.color = '#27ae60';
+            resultEl.textContent = `성공 ${data.success}/${data.total}개 (수집 ${data.collected}건, 매칭 ${data.matched}건, 신규 ${data.inserted}건)`;
+        }
+
+        await new Promise(r => setTimeout(r, 800));
+        await loadSources();
+        renderSources();
+        renderScraperSection();
+    } catch (e) {
+        resultEl.style.color = '#e74c3c';
+        resultEl.textContent = '수집 실패: ' + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '일괄 수집';
+        btn.classList.remove('collecting');
+        progressBar.classList.remove('indeterminate');
+        setTimeout(() => {
+            progressWrap.classList.remove('active');
+            progressBar.style.width = '0%';
+        }, 1000);
     }
 }
 

@@ -171,6 +171,74 @@
             font-size: 0.78rem;
             cursor: pointer;
         }
+
+        /* 스크래퍼 섹션 */
+        .scraper-section {
+            background: #fdf6ec;
+            border: 1px solid #f0d9a8;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .scraper-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .scraper-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .scraper-section h2 {
+            font-size: 1rem;
+            margin: 0;
+            color: #7d5a29;
+        }
+        .scraper-count {
+            font-size: 0.8rem;
+            color: #999;
+        }
+        .scraper-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-scraper-collect {
+            background: #e67e22;
+            padding: 7px 20px;
+            font-size: 0.9rem;
+        }
+        .btn-scraper-collect:hover { background: #d35400; }
+        .btn-scraper-collect.collecting { background: #f39c12; }
+        .scraper-toggle {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #7d5a29;
+            cursor: pointer;
+            user-select: none;
+        }
+        .scraper-toggle:hover { text-decoration: underline; }
+        .scraper-list {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .scraper-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: #fff;
+            border: 1px solid #e8dcc8;
+            border-radius: 5px;
+            font-size: 0.82rem;
+        }
+        .scraper-item-name { color: #333; font-weight: 500; }
+        .scraper-item-meta { color: #999; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -181,6 +249,27 @@
 
         <!-- 출처 카드 목록 -->
         <div id="source-list"></div>
+
+        <!-- 개별 기관 스크래퍼 섹션 -->
+        <div class="scraper-section" id="scraper-section">
+            <div class="scraper-header">
+                <div class="scraper-title-row">
+                    <h2>개별 기관 입찰공고 (스크래핑)</h2>
+                    <span class="scraper-count" id="scraper-count"></span>
+                </div>
+                <div class="scraper-actions">
+                    <button class="btn-collect btn-scraper-collect" id="btn-scraper-collect" onclick="collectAllScrapers()">일괄 수집</button>
+                    <div class="progress-wrap" id="scraper-progress-wrap">
+                        <div class="progress-bar" id="scraper-progress-bar"></div>
+                    </div>
+                    <span class="collect-result" id="scraper-result"></span>
+                </div>
+            </div>
+            <div class="scraper-toggle" onclick="toggleScraperList()">
+                <span id="scraper-toggle-icon">&#9654;</span> 기관 목록 보기
+            </div>
+            <div class="scraper-list" id="scraper-list" style="display:none;"></div>
+        </div>
 
         <!-- 공통 키워드 -->
         <div class="common-keywords-section">
