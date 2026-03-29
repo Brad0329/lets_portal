@@ -122,7 +122,40 @@
 | 검토요청 태그 해제 | O | O | 본인만 |
 | 입찰대상/제외 태그 해제 | O | O | X |
 
+## 추가 수정: 나라장터 수집 최적화 + 스케줄러 제거
+
+### 작업 일자: 2026-03-29
+
+### 나라장터 PPSSrch 전환
+- **기존**: 전체 공고 다운로드 후 로컬 키워드 매칭 (수천 건 → 느림, ~10분)
+- **변경**: `PPSSrch` 엔드포인트로 전환, `bidNtceNm` 파라미터로 키워드별 API 호출
+  - `getBidPblancListInfoServc` → `getBidPblancListInfoServcPPSSrch`
+  - `getBidPblancListInfoThng` → `getBidPblancListInfoThngPPSSrch`
+  - `getBidPblancListInfoCnstwk` → `getBidPblancListInfoCnstwkPPSSrch`
+- 루프 구조 변경: `bid_type > 날짜구간 > 페이지` → `bid_type > 키워드 > 날짜구간 > 페이지`
+- 중복 제거: `collected`를 dict로 변경, `{bid_type}-{bid_no}` 기준 dedup + 키워드 누적
+- 429 rate limit 대응: 호출 간 0.2초 딜레이 + 429 시 5초 대기 후 재시도
+
+### 스케줄러 제거
+- APScheduler 자동 수집 코드 삭제 (`main.py` lifespan에서 제거)
+- `/api/scheduler` API 삭제
+- 대시보드 "자동 수집 스케줄" 표시 삭제
+- **이유**: PPSSrch 전환으로 수집 로직이 변경됨 → Phase E에서 재설계
+
+### 파일 변경
+
+| 파일 | 변경 유형 |
+|------|----------|
+| `backend/collectors/nara.py` | 수정 — PPSSrch 엔드포인트, 키워드별 호출, 중복 제거, rate limit 대응 |
+| `backend/main.py` | 수정 — APScheduler 제거, /api/scheduler 삭제 |
+| `frontend/dashboard.html` | 수정 — 자동 수집 스케줄 표시 제거 |
+| `work_log2/plan_2.md` | 수정 — Phase E 현재 상태 반영 |
+
+### 커밋
+- `6fa2082` — 나라장터 PPSSrch 키워드별 API 호출로 전환 + 스케줄러 제거
+
 ## 다음 단계: Phase B
 - 입찰 준비 페이지 UI
 - 체크리스트 기능
 - 파일 업로드/관리
+- 나라장터 중분류 필터 (설정 페이지에서 관심 중분류 선택)
