@@ -130,13 +130,25 @@
                 const lastUpdate = data.last_collected ? new Date(data.last_collected).toLocaleString('ko-KR') : '-';
                 document.getElementById('last-collected').textContent = lastUpdate;
 
-                // 출처별 현황
-                const statsHtml = data.by_source.map(s => `
+                // 출처별 현황 — collect_sources 데이터 병합
+                let sources = [];
+                try {
+                    const srcRes = await fetch('/api/sources');
+                    if (srcRes.ok) sources = await srcRes.json();
+                } catch {}
+
+                const statsHtml = data.by_source.map(s => {
+                    const src = sources.find(cs => cs.name === s.source);
+                    const lastAt = src && src.last_collected_at
+                        ? new Date(src.last_collected_at).toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+                        : '';
+                    const lastInfo = lastAt ? ` (수집: ${lastAt})` : '';
+                    return `
                     <div class="dash-info-row">
                         <span class="dash-info-label">${escapeHtmlNav(s.source)}</span>
-                        <span class="dash-info-value">전체 ${s.total}건 / 진행중 ${s.ongoing || 0}건</span>
-                    </div>
-                `).join('');
+                        <span class="dash-info-value">전체 ${s.total}건 / 진행중 ${s.ongoing || 0}건${lastInfo}</span>
+                    </div>`;
+                }).join('');
                 document.getElementById('source-stats').innerHTML = statsHtml || '<div class="dash-info-row"><span class="dash-info-label">데이터 없음</span></div>';
 
                 // 태그별 건수 (stats API에 포함)

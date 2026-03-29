@@ -70,17 +70,21 @@ def fetch_announcements(keywords: list[str], days: int = 30, bid_types: list[str
                     }
 
                     try:
-                        resp = requests.get(url, params=params, timeout=30)
-                        # 429 Too Many Requests → 대기 후 재시도
-                        if resp.status_code == 429:
-                            logger.warning(f"나라장터 429 rate limit — 5초 대기 후 재시도 [{keyword}]")
-                            time.sleep(5)
+                        resp = None
+                        for retry in range(3):
                             resp = requests.get(url, params=params, timeout=30)
+                            if resp.status_code == 429:
+                                wait = 3 * (retry + 1)
+                                logger.warning(f"나라장터 429 rate limit — {wait}초 대기 후 재시도 ({retry+1}/3) [{keyword}]")
+                                time.sleep(wait)
+                            else:
+                                break
                         resp.raise_for_status()
                         data = resp.json()
-                        time.sleep(0.2)  # API 호출 간 딜레이
+                        time.sleep(0.5)  # API 호출 간 딜레이 (rate limit 방지)
                     except Exception as e:
                         logger.error(f"나라장터 {bid_type} [{keyword}] API 호출 실패 (page={page}): {e}")
+                        time.sleep(1)
                         break
 
                     # 에러 응답 체크
@@ -283,21 +287,27 @@ def save_to_db(notices: list[dict]):
     return inserted, updated
 
 
-def collect_and_save():
-    """키워드 목록 로드 → 수집 → 저장"""
+def collect_and_save(keywords=None, mode="daily"):
+    """키워드 목록 로드 → 수집 → 저장
+    mode: 'daily'=최근 2일(빠름), 'full'=설정된 전체기간
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT keyword FROM keywords WHERE is_active=1")
-    keywords = [row[0] for row in cursor.fetchall()]
+    if keywords is None:
+        cursor.execute("SELECT keyword FROM keywords WHERE is_active=1")
+        keywords = [row[0] for row in cursor.fetchall()]
 
-    cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
-    row = cursor.fetchone()
-    days = int(row[0]) if row else 30
+    if mode == "full":
+        cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
+        row = cursor.fetchone()
+        days = int(row[0]) if row else 30
+    else:
+        days = 2  # daily 모드: 최근 2일만
 
     conn.close()
 
-    logger.info(f"나라장터 수집 시작: 키워드 {len(keywords)}개, 기간 {days}일")
+    logger.info(f"나라장터 수집 시작 (mode={mode}): 키워드 {len(keywords)}개, 기간 {days}일")
     notices = fetch_announcements(keywords, days=days)
     inserted, updated = save_to_db(notices)
     return {"source": "나라장터", "collected": len(notices), "inserted": inserted, "updated": updated}

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkAuth();
     if (!user) return;
 
+    loadSourceFilter();
     loadStats();
     loadNotices();
 
@@ -25,6 +26,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 });
+
+// ─── 출처 필터 동적 로드 ────────────────────────
+async function loadSourceFilter() {
+    try {
+        const res = await fetch(`${API_BASE}/api/sources`);
+        if (!res.ok) return;
+        const sources = await res.json();
+        const select = document.getElementById('filter-source');
+        // 기존 옵션 제거 (첫 번째 "전체 출처" 유지)
+        while (select.options.length > 1) select.remove(1);
+        sources.filter(s => s.is_active).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.textContent = s.name;
+            select.appendChild(opt);
+        });
+    } catch (e) { console.error('출처 필터 로드 실패:', e); }
+}
 
 // ─── 통계 로드 ───────────────────────────────
 async function loadStats() {
@@ -137,31 +156,6 @@ function goPage(page) {
     window.scrollTo(0, 0);
 }
 
-// ─── 수집 실행 ───────────────────────────────
-async function runCollect() {
-    const btn = document.getElementById('btn-collect');
-    btn.textContent = '⏳ 수집중...';
-    btn.classList.add('collecting');
-
-    try {
-        const res = await fetch(`${API_BASE}/api/collect`, { method: 'POST' });
-        const data = await res.json();
-
-        const summary = data.results.map(r =>
-            `${r.source}: ${r.collected}건`
-        ).join(', ');
-        alert(`수집 완료!\n${summary}`);
-
-        loadStats();
-        loadNotices();
-    } catch (e) {
-        alert('수집 실패: ' + e.message);
-    } finally {
-        btn.textContent = '🔄 수집 실행';
-        btn.classList.remove('collecting');
-    }
-}
-
 // ─── 모달 ────────────────────────────────────
 async function openModal(id) {
     // 모달 즉시 열기 (기본 정보)
@@ -170,6 +164,8 @@ async function openModal(id) {
 
     renderModal(n);
     document.getElementById('modal-overlay').classList.add('active');
+    // 모달 스크롤을 맨 위로 리셋
+    document.querySelector('.modal-content').scrollTop = 0;
 
     // 상세 API 호출 (확장 필드 보충)
     try {
@@ -222,28 +218,64 @@ function renderModal(n) {
 
     // 확장 필드 (값이 있을 때만 표시)
     let extraFields = '';
-    if (n.biz_name) extraFields += `<div class="modal-info"><label>사업명</label> ${escapeHtml(n.biz_name)}</div>`;
-    if (n.region) extraFields += `<div class="modal-info"><label>지원 지역</label> ${escapeHtml(n.region)}</div>`;
-    if (n.target) extraFields += `<div class="modal-info"><label>지원 대상</label> ${escapeHtml(n.target)}</div>`;
-    if (n.target_age) extraFields += `<div class="modal-info"><label>대상 연령</label> ${escapeHtml(n.target_age)}</div>`;
-    if (n.biz_enyy) extraFields += `<div class="modal-info"><label>창업 연차</label> ${escapeHtml(n.biz_enyy)}</div>`;
-    if (n.excl_target) extraFields += `<div class="modal-info"><label>제외 대상</label> ${escapeHtml(n.excl_target)}</div>`;
-    if (n.budget) extraFields += `<div class="modal-info"><label>지원 규모</label> ${escapeHtml(n.budget)}</div>`;
-    if (n.est_price) extraFields += `<div class="modal-info"><label>추정 가격</label> ${escapeHtml(n.est_price)}</div>`;
-    if (n.apply_method) extraFields += `<div class="modal-info"><label>접수 방법</label> ${escapeHtml(n.apply_method)}</div>`;
-    if (n.department) extraFields += `<div class="modal-info"><label>담당부서</label> ${escapeHtml(n.department)}</div>`;
-    if (n.contact) extraFields += `<div class="modal-info"><label>문의처</label> ${escapeHtml(n.contact)}</div>`;
-    if (n.content) extraFields += `<div class="modal-info modal-content-box"><label>사업 개요</label><div class="content-text">${escapeHtml(n.content)}</div></div>`;
+
+    if (n.source === '나라장터') {
+        // 나라장터 전용 상세 필드
+        if (n.est_price) extraFields += `<div class="modal-info"><label>추정 가격</label> ${formatPrice(n.est_price)}원</div>`;
+        if (n.assign_budget) extraFields += `<div class="modal-info"><label>배정 예산</label> ${formatPrice(n.assign_budget)}원</div>`;
+        if (n.bid_method) extraFields += `<div class="modal-info"><label>입찰 방식</label> ${escapeHtml(n.bid_method)}</div>`;
+        if (n.contract_method) extraFields += `<div class="modal-info"><label>계약 방법</label> ${escapeHtml(n.contract_method)}</div>`;
+        if (n.award_method) extraFields += `<div class="modal-info"><label>낙찰 방식</label> ${escapeHtml(n.award_method)}</div>`;
+        if (n.open_date) extraFields += `<div class="modal-info"><label>개찰 일시</label> ${escapeHtml(n.open_date)}</div>`;
+        if (n.tech_eval_ratio || n.price_eval_ratio) {
+            extraFields += `<div class="modal-info"><label>평가 비율</label> 기술 ${escapeHtml(n.tech_eval_ratio || '0')}% / 가격 ${escapeHtml(n.price_eval_ratio || '0')}%</div>`;
+        }
+        if (n.procure_class) extraFields += `<div class="modal-info"><label>조달 분류</label> ${escapeHtml(n.procure_class)}</div>`;
+        if (n.contact_name || n.contact_phone) {
+            let contactInfo = escapeHtml(n.contact_name || '');
+            if (n.contact_phone) contactInfo += ` (${escapeHtml(n.contact_phone)})`;
+            if (n.contact_email) contactInfo += ` ${escapeHtml(n.contact_email)}`;
+            extraFields += `<div class="modal-info"><label>담당자</label> ${contactInfo}</div>`;
+        }
+    } else {
+        // K-Startup / 중소벤처기업부 등 기존 필드
+        if (n.biz_name) extraFields += `<div class="modal-info"><label>사업명</label> ${escapeHtml(n.biz_name)}</div>`;
+        if (n.region) extraFields += `<div class="modal-info"><label>지원 지역</label> ${escapeHtml(n.region)}</div>`;
+        if (n.target) extraFields += `<div class="modal-info"><label>지원 대상</label> ${escapeHtml(n.target)}</div>`;
+        if (n.target_age) extraFields += `<div class="modal-info"><label>대상 연령</label> ${escapeHtml(n.target_age)}</div>`;
+        if (n.biz_enyy) extraFields += `<div class="modal-info"><label>창업 연차</label> ${escapeHtml(n.biz_enyy)}</div>`;
+        if (n.excl_target) extraFields += `<div class="modal-info"><label>제외 대상</label> ${escapeHtml(n.excl_target)}</div>`;
+        if (n.budget) extraFields += `<div class="modal-info"><label>지원 규모</label> ${escapeHtml(n.budget)}</div>`;
+        if (n.est_price) extraFields += `<div class="modal-info"><label>추정 가격</label> ${escapeHtml(n.est_price)}</div>`;
+        if (n.apply_method) extraFields += `<div class="modal-info"><label>접수 방법</label> ${escapeHtml(n.apply_method)}</div>`;
+        if (n.department) extraFields += `<div class="modal-info"><label>담당부서</label> ${escapeHtml(n.department)}</div>`;
+        if (n.contact) extraFields += `<div class="modal-info"><label>문의처</label> ${escapeHtml(n.contact)}</div>`;
+        if (n.content) extraFields += `<div class="modal-info modal-content-box"><label>사업 개요</label><div class="content-text">${escapeHtml(n.content)}</div></div>`;
+    }
 
     // 링크 버튼들
     let links = '';
     if (n.url) links += `<a href="${escapeHtml(n.url)}" target="_blank" class="modal-link">공고 사이트 바로가기</a>`;
     if (n.apply_url) links += `<a href="${escapeHtml(n.apply_url)}" target="_blank" class="modal-link modal-link-apply">신청 페이지</a>`;
-    if (n.file_url) {
+
+    // 첨부파일 (나라장터 attachments 또는 기존 file_url)
+    let attachmentHtml = '';
+    if (n.attachments) {
+        try {
+            const files = JSON.parse(n.attachments);
+            if (files.length > 0) {
+                attachmentHtml = '<div class="modal-attachments"><label>첨부파일</label><ul>';
+                files.forEach(f => {
+                    attachmentHtml += `<li><a href="${escapeHtml(f.url)}" target="_blank" class="attachment-link">${escapeHtml(f.name)}</a></li>`;
+                });
+                attachmentHtml += '</ul></div>';
+            }
+        } catch { /* ignore */ }
+    }
+    if (n.file_url && !attachmentHtml) {
         try {
             const files = JSON.parse(n.file_url);
             files.forEach(f => {
-                const ext = f.name.split('.').pop().toLowerCase();
                 links += `<a href="${escapeHtml(f.url)}" target="_blank" class="modal-link modal-link-file">${escapeHtml(f.name)}</a>`;
             });
         } catch {
@@ -264,6 +296,7 @@ function renderModal(n) {
         <div class="modal-info"><label>상태</label> <span class="badge badge-${n.status === 'ongoing' ? 'ongoing' : 'closed'}">${statusText}</span></div>
         <div class="modal-info"><label>키워드</label> ${keywords || '-'}</div>
         ${extraFields}
+        ${attachmentHtml}
         <div class="modal-links">${links}</div>
     `;
 }
@@ -332,4 +365,11 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatPrice(val) {
+    if (!val) return '';
+    const num = Number(val);
+    if (isNaN(num)) return val;
+    return num.toLocaleString('ko-KR');
 }

@@ -9,7 +9,7 @@
   - id, notice_id(UNIQUE), tag, tagged_by(FK→users), memo
   - created_at, updated_at
   - 공고 1건당 태그 1개 (UNIQUE 제약)
-- 유효 태그: `입찰대상`, `제외`, `검토중`, `낙찰`, `유찰`
+- 유효 태그: `검토요청`, `입찰대상`, `제외`, `낙찰`, `유찰`
 
 ### 2. 태그 관리 API
 | 엔드포인트 | 메서드 | 설명 |

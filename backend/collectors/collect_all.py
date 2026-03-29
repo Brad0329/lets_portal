@@ -1,5 +1,5 @@
 """
-전체 수집기 실행 (K-Startup + 중소벤처기업부 + 나라장터)
+전체 수집기 실행 (K-Startup + 중소벤처기업부 + 나라장터 + 창조경제혁신센터)
 """
 
 import logging
@@ -11,40 +11,98 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from collectors.kstartup import collect_and_save as collect_kstartup
 from collectors.mss_biz import collect_and_save as collect_mss
 from collectors.nara import collect_and_save as collect_nara
+from collectors.ccei import collect_and_save as collect_ccei
+from database import get_connection
 
 logger = logging.getLogger(__name__)
 
+# collector_type → 수집기 함수 매핑
+COLLECTOR_MAP = {
+    "nara": collect_nara,
+    "kstartup": collect_kstartup,
+    "mss_biz": collect_mss,
+    "ccei": collect_ccei,
+}
+
+# collector_type → 출처명 매핑 (에러 시 fallback)
+SOURCE_NAME_MAP = {
+    "nara": "나라장터",
+    "kstartup": "K-Startup",
+    "mss_biz": "중소벤처기업부",
+    "ccei": "창조경제혁신센터",
+}
+
+
+def _load_keywords_for_source(source_id: int) -> list[str]:
+    """공통 키워드 + 출처 전용 키워드 합산 로드"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT DISTINCT keyword FROM keywords WHERE is_active=1 AND (source_id IS NULL OR source_id=?)",
+        (source_id,),
+    )
+    keywords = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return keywords
+
+
+def collect_by_source(source_id: int, mode: str = "daily") -> dict:
+    """개별 출처 수집 실행. mode: 'daily'=최근 2일(빠름), 'full'=전체기간"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM collect_sources WHERE id=?", (source_id,))
+    source = cursor.fetchone()
+    conn.close()
+
+    if not source:
+        return {"error": f"출처 ID {source_id}를 찾을 수 없습니다."}
+
+    source = dict(source)
+    ctype = source["collector_type"]
+    collector_fn = COLLECTOR_MAP.get(ctype)
+
+    if not collector_fn:
+        return {"error": f"수집기 타입 '{ctype}'에 대한 수집기가 없습니다."}
+
+    # 키워드 로드
+    keywords = _load_keywords_for_source(source_id)
+    if not keywords:
+        return {"source": source["name"], "collected": 0, "inserted": 0, "updated": 0, "error": "활성 키워드가 없습니다."}
+
+    try:
+        result = collector_fn(keywords=keywords, mode=mode)
+        # 수집 상태 갱신
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE id=?",
+            (result.get("collected", 0), source_id),
+        )
+        conn.commit()
+        conn.close()
+        return result
+    except Exception as e:
+        logger.error(f"❌ {source['name']} 수집 실패: {e}")
+        return {"source": source["name"], "collected": 0, "inserted": 0, "updated": 0, "error": str(e)}
+
 
 def collect_all():
-    """모든 API 수집기 실행"""
+    """모든 활성 출처 수집 실행"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM collect_sources WHERE is_active=1 ORDER BY id")
+    source_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
     results = []
-
-    # 1. K-Startup
-    try:
-        r = collect_kstartup()
+    for sid in source_ids:
+        r = collect_by_source(sid)
         results.append(r)
-        logger.info(f"✅ K-Startup: {r['collected']}건 수집")
-    except Exception as e:
-        logger.error(f"❌ K-Startup 수집 실패: {e}")
-        results.append({"source": "K-Startup", "collected": 0, "inserted": 0, "updated": 0, "error": str(e)})
-
-    # 2. 중소벤처기업부
-    try:
-        r = collect_mss()
-        results.append(r)
-        logger.info(f"✅ 중소벤처기업부: {r['collected']}건 수집")
-    except Exception as e:
-        logger.error(f"❌ 중소벤처기업부 수집 실패: {e}")
-        results.append({"source": "중소벤처기업부", "collected": 0, "inserted": 0, "updated": 0, "error": str(e)})
-
-    # 3. 나라장터 (서버 장애 시 건너뜀)
-    try:
-        r = collect_nara()
-        results.append(r)
-        logger.info(f"✅ 나라장터: {r['collected']}건 수집")
-    except Exception as e:
-        logger.error(f"❌ 나라장터 수집 실패: {e}")
-        results.append({"source": "나라장터", "collected": 0, "inserted": 0, "updated": 0, "error": str(e)})
+        src_name = r.get("source", f"ID={sid}")
+        if r.get("error"):
+            logger.error(f"❌ {src_name}: {r['error']}")
+        else:
+            logger.info(f"✅ {src_name}: {r['collected']}건 수집")
 
     return results
 

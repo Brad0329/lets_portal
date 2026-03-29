@@ -50,20 +50,11 @@
             <span id="settings-msg" class="msg"></span>
         </section>
 
-        <!-- 키워드 관리 -->
+        <!-- 키워드 관리 → 출처 관리 페이지로 이동 -->
         <section class="settings-section">
             <h2>🏷️ 키워드 관리</h2>
-            <p class="section-desc">활성화된 키워드에 매칭되는 공고만 수집됩니다. 클릭하여 ON/OFF 전환.</p>
-            <div class="keyword-controls">
-                <input type="text" id="new-keyword" placeholder="새 키워드 입력" class="keyword-input" />
-                <select id="new-keyword-group" class="keyword-group-select"></select>
-                <button class="btn btn-sm" onclick="addKeyword()">+ 추가</button>
-                <span class="separator">|</span>
-                <button class="btn btn-sm" onclick="toggleAllKeywords(true)">전체 ON</button>
-                <button class="btn btn-sm btn-outline" onclick="toggleAllKeywords(false)">전체 OFF</button>
-                <span id="keyword-count" class="count-label"></span>
-            </div>
-            <div id="keyword-groups"></div>
+            <p class="section-desc">키워드 관리가 <a href="/source-list.html" style="color:#2980b9;font-weight:600">공고수집 출처</a> 페이지로 이동되었습니다.</p>
+            <a href="/source-list.html" class="btn" style="display:inline-block;text-decoration:none">📡 공고수집 출처로 이동</a>
         </section>
 
         <!-- 기관 목록 -->
@@ -73,12 +64,10 @@
             <div id="org-list"></div>
         </section>
 
-        <!-- 수집 실행 -->
+        <!-- 수집 실행 → 출처 관리 페이지로 이동 -->
         <section class="settings-section">
             <h2>🔄 데이터 수집</h2>
-            <p class="section-desc">설정 변경 후 수집을 실행하면 새 설정이 반영됩니다.</p>
-            <button class="btn" id="btn-collect" onclick="runCollect()">🔄 수집 실행</button>
-            <span id="collect-msg" class="msg"></span>
+            <p class="section-desc">출처별 수집은 <a href="/source-list.html" style="color:#2980b9;font-weight:600">공고수집 출처</a> 페이지에서 실행할 수 있습니다.</p>
         </section>
 
         <!-- 계정 관리 (관리자 전용) -->

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공고수집 출처 - LETS 프로젝트 관리</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <link rel="stylesheet" href="/css/settings.css">
+    <style>
+        header { display: none; }
+
+        .source-page { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .source-page h1 { font-size: 1.4rem; margin-bottom: 20px; }
+
+        /* 공통 키워드 영역 */
+        .common-keywords-section {
+            background: #f0f7ff;
+            border: 1px solid #b3d4fc;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .common-keywords-section h2 {
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+            color: #1a5276;
+        }
+
+        /* 출처 카드 */
+        .source-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .source-card.inactive { opacity: 0.5; }
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .source-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .source-meta {
+            font-size: 0.82rem;
+            color: #888;
+        }
+        .source-stats {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .btn-collect {
+            background: #2980b9;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn-collect:hover { background: #1a6da0; }
+        .btn-collect-full {
+            background: #7f8c8d;
+            font-size: 0.8rem;
+            padding: 6px 10px;
+        }
+        .btn-collect-full:hover { background: #5f6b6c; }
+        .btn-collect:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-collect.collecting { background: #f39c12; }
+        .collect-result {
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        /* 진행 상태바 */
+        .progress-wrap {
+            flex: 1;
+            max-width: 300px;
+            height: 18px;
+            background: #e9ecef;
+            border-radius: 9px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-wrap.active { display: block; }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2980b9, #27ae60);
+            border-radius: 9px;
+            transition: width 0.4s ease;
+            position: relative;
+        }
+        .progress-bar.indeterminate {
+            width: 30% !important;
+            animation: indeterminate 1.5s infinite ease-in-out;
+        }
+        @keyframes indeterminate {
+            0% { margin-left: 0%; }
+            50% { margin-left: 70%; }
+            100% { margin-left: 0%; }
+        }
+
+        /* 키워드 칩 */
+        .kw-area { margin-top: 8px; }
+        .kw-area-label {
+            font-size: 0.8rem;
+            color: #777;
+            margin-bottom: 4px;
+        }
+        .kw-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .kw-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .kw-chip.active {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #a3d9a5;
+        }
+        .kw-chip.inactive {
+            background: #f0f0f0;
+            color: #999;
+            border: 1px solid #ddd;
+            text-decoration: line-through;
+        }
+        .kw-chip .kw-del {
+            font-size: 0.7rem;
+            color: #c0392b;
+            cursor: pointer;
+            margin-left: 2px;
+        }
+        .kw-add-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .kw-add-inline input {
+            width: 100px;
+            padding: 3px 8px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        .kw-add-btn {
+            background: #2980b9;
+            color: #fff;
+            border: none;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav id="main-navbar"></nav>
+
+    <main class="source-page">
+        <h1>공고수집 출처</h1>
+
+        <!-- 출처 카드 목록 -->
+        <div id="source-list"></div>
+
+        <!-- 공통 키워드 -->
+        <div class="common-keywords-section">
+            <h2>공통 키워드 (모든 출처에 적용)</h2>
+            <div id="common-keywords" class="kw-chips"></div>
+            <div class="kw-add-inline" style="margin-top: 8px;">
+                <input type="text" id="common-kw-input" placeholder="키워드 입력" onkeydown="if(event.key==='Enter') addCommonKeyword()" />
+                <button class="kw-add-btn" onclick="addCommonKeyword()">+ 추가</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/source-list.js"></script>
+</body>
+</html>

@@ -129,6 +129,19 @@ def init_db():
         ("department", "TEXT"),     # 담당부서 (K-Startup biz_prch_dprt_nm)
         ("excl_target", "TEXT"),    # 제외 대상 (K-Startup aply_excl_trgt_ctnt)
         ("biz_name", "TEXT"),       # 통합공고 사업명 (K-Startup intg_pbanc_biz_nm)
+        # 나라장터 전용 확장 필드
+        ("bid_method", "TEXT"),      # 입찰 방식 (bidMethdNm)
+        ("contract_method", "TEXT"), # 계약 체결 방법 (cntrctCnclsMthdNm)
+        ("award_method", "TEXT"),    # 낙찰 방식 (sucsfbidMthdNm)
+        ("open_date", "TEXT"),       # 개찰 일시 (opengDt)
+        ("assign_budget", "TEXT"),   # 배정 예산 (asignBdgtAmt)
+        ("contact_name", "TEXT"),    # 담당자 (ntceInsttOfclNm)
+        ("contact_phone", "TEXT"),   # 담당자 전화 (ntceInsttOfclTelNo)
+        ("contact_email", "TEXT"),   # 담당자 이메일 (ntceInsttOfclEmailAdrs)
+        ("tech_eval_ratio", "TEXT"), # 기술평가 비율 (techAbltEvlRt)
+        ("price_eval_ratio", "TEXT"),# 가격평가 비율 (bidPrceEvlRt)
+        ("procure_class", "TEXT"),   # 조달 분류 (pubPrcrmntLrgClsfcNm > MidClsfcNm)
+        ("attachments", "TEXT"),     # 첨부파일 JSON [{name, url}, ...]
     ]
     for col_name, col_type in new_columns:
         try:
@@ -148,6 +161,38 @@ def init_db():
             "INSERT OR IGNORE INTO display_settings (setting_key, setting_value, description, updated_at) VALUES (?, ?, ?, datetime('now'))",
             (key, value, desc),
         )
+
+    # Phase A.2: collect_sources 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS collect_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            collector_type TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1,
+            last_collected_at TEXT,
+            last_collected_count INTEGER,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # collect_sources 초기 데이터 (없을 때만)
+    initial_sources = [
+        ("나라장터", "nara"),
+        ("K-Startup", "kstartup"),
+        ("중소벤처기업부", "mss_biz"),
+        ("창조경제혁신센터", "ccei"),
+    ]
+    for name, ctype in initial_sources:
+        cursor.execute(
+            "INSERT OR IGNORE INTO collect_sources (name, collector_type) VALUES (?, ?)",
+            (name, ctype),
+        )
+
+    # keywords 테이블에 source_id 컬럼 추가 (NULL=공통, 값=출처 전용)
+    try:
+        cursor.execute("ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)")
+    except Exception:
+        pass  # 이미 존재하면 무시
 
     conn.commit()
     conn.close()

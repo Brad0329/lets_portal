@@ -260,6 +260,18 @@ main {
     white-space: pre-wrap;
 }
 
+/* 첨부파일 */
+.modal-attachments { margin: 12px 0; font-size: 0.9rem; }
+.modal-attachments label { font-weight: 600; color: #555; display: block; margin-bottom: 6px; }
+.modal-attachments ul { list-style: none; padding: 0; margin: 0; }
+.modal-attachments li { padding: 6px 0; border-bottom: 1px solid #eee; }
+.modal-attachments li:last-child { border-bottom: none; }
+.attachment-link {
+    color: #2980b9; text-decoration: none; font-size: 0.85rem;
+}
+.attachment-link:hover { text-decoration: underline; color: #1a5276; }
+.attachment-link::before { content: '\1F4CE '; }
+
 /* 행 클릭 커서 */
 #notices-table tbody tr { cursor: pointer; }
 

@@ -731,11 +731,194 @@ def get_organizations(request: Request):
     return orgs
 
 
+# ─── 출처 관리 API ────────────────────────────────
+
+@app.get("/api/sources")
+def get_sources(request: Request):
+    """출처 목록 (수집 상태 포함)"""
+    require_login(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM collect_sources ORDER BY id")
+    sources = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return sources
+
+
+@app.post("/api/sources")
+def create_source(
+    request: Request,
+    name: str = Body(...),
+    collector_type: str = Body(...),
+):
+    """출처 추가 (관리자)"""
+    require_admin(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO collect_sources (name, collector_type) VALUES (?, ?)",
+            (name.strip(), collector_type.strip()),
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+    except Exception as e:
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": f"출처 추가 실패: {e}"})
+    conn.close()
+    return {"success": True, "id": new_id}
+
+
+@app.put("/api/sources/{source_id}")
+def update_source(
+    request: Request,
+    source_id: int,
+    name: str = Body(default=None),
+    collector_type: str = Body(default=None),
+    is_active: int = Body(default=None),
+):
+    """출처 수정 (관리자)"""
+    require_admin(request)
+    updates = {}
+    if name is not None:
+        updates["name"] = name.strip()
+    if collector_type is not None:
+        updates["collector_type"] = collector_type.strip()
+    if is_active is not None:
+        updates["is_active"] = is_active
+    if not updates:
+        return {"error": "변경할 항목이 없습니다."}
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    sets = ", ".join(f"{k}=?" for k in updates)
+    cursor.execute(f"UPDATE collect_sources SET {sets} WHERE id=?", (*updates.values(), source_id))
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.delete("/api/sources/{source_id}")
+def delete_source(request: Request, source_id: int):
+    """출처 삭제 (관리자)"""
+    require_admin(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    # 출처에 연결된 키워드도 삭제
+    cursor.execute("DELETE FROM keywords WHERE source_id=?", (source_id,))
+    cursor.execute("DELETE FROM collect_sources WHERE id=?", (source_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return {"success": affected > 0}
+
+
+@app.post("/api/sources/{source_id}/collect")
+def collect_by_source(request: Request, source_id: int, mode: str = Query(default="daily")):
+    """개별 출처 수집 실행 (관리자). mode: daily=최근2일(빠름), full=전체기간"""
+    require_admin(request)
+
+    from collectors.collect_all import collect_by_source as _collect_by_source
+    result = _collect_by_source(source_id, mode=mode)
+    return result
+
+
+# ─── 출처별 키워드 API ───────────────────────────
+
+@app.get("/api/keywords/common")
+def get_common_keywords(request: Request):
+    """공통 키워드 목록 (source_id IS NULL)"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM keywords WHERE source_id IS NULL ORDER BY keyword_group, keyword")
+    keywords = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return keywords
+
+
+@app.post("/api/keywords/common")
+def add_common_keyword(
+    request: Request,
+    keyword: str = Query(...),
+    keyword_group: str = Query(default="사용자 추가"),
+):
+    """공통 키워드 추가"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM keywords WHERE keyword=? AND source_id IS NULL", (keyword.strip(),))
+    if cursor.fetchone():
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": f"'{keyword}' 공통 키워드가 이미 존재합니다."})
+    cursor.execute(
+        "INSERT INTO keywords (keyword, keyword_group, is_active, source_id) VALUES (?, ?, 1, NULL)",
+        (keyword.strip(), keyword_group.strip()),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM keywords WHERE id=?", (new_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row)
+
+
+@app.get("/api/sources/{source_id}/keywords")
+def get_source_keywords(request: Request, source_id: int):
+    """출처 전용 추가 키워드 목록"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM keywords WHERE source_id=? ORDER BY keyword_group, keyword", (source_id,))
+    keywords = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return keywords
+
+
+@app.post("/api/sources/{source_id}/keywords")
+def add_source_keyword(
+    request: Request,
+    source_id: int,
+    keyword: str = Query(...),
+    keyword_group: str = Query(default="출처 전용"),
+):
+    """출처에 추가 키워드 등록"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM keywords WHERE keyword=? AND source_id=?", (keyword.strip(), source_id))
+    if cursor.fetchone():
+        conn.close()
+        return JSONResponse(status_code=400, content={"error": f"'{keyword}' 키워드가 이미 존재합니다."})
+    cursor.execute(
+        "INSERT INTO keywords (keyword, keyword_group, is_active, source_id) VALUES (?, ?, 1, ?)",
+        (keyword.strip(), keyword_group.strip(), source_id),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM keywords WHERE id=?", (new_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row)
+
+
 # ─── 수집 실행 API ────────────────────────────────
 
 @app.post("/api/collect")
 def run_collect(request: Request):
-    """수동으로 전체 수집 실행 (관리자 전용)"""
+    """수동으로 전체 수집 실행 (관리자 전용) — 하위호환"""
     require_admin(request)
     results = collect_all()
     return {"results": results}
@@ -769,6 +952,10 @@ if os.path.isdir(frontend_dir):
     @app.get("/excluded-list.html")
     def excluded_list_page():
         return FileResponse(os.path.join(frontend_dir, "excluded-list.html"))
+
+    @app.get("/source-list.html")
+    def source_list_page():
+        return FileResponse(os.path.join(frontend_dir, "source-list.html"))
 
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

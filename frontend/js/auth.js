@@ -44,6 +44,7 @@ function renderNavbar() {
 
     const menuItems = [
         { href: '/dashboard.html', label: '대시보드', icon: '📊', show: true },
+        { href: '/source-list.html', label: '공고수집 출처', icon: '📡', show: isAdmin || hasPermission('keyword') },
         { href: '/index.html', label: '공고 중인 사업', icon: '📋', show: true },
         { href: '/review-list.html', label: '검토요청', icon: '🔍', show: true },
         { href: '/bid-list.html', label: '입찰 예정', icon: '📌', show: isAdmin || hasPermission('bid_tag') },
