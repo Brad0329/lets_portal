@@ -319,6 +319,113 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [x] 나라장터 수집 모드 분리: 빠른수집(daily, 최근2일) / 전체수집(full, 설정기간)
 - [x] 출처 필터 동적 로드 (하드코딩 제거 → collect_sources 테이블 참조)
 
+### Phase A.3: 개별 기관 스크래핑 확장 (50개 기관)
+
+#### 배경
+- 58개 수집 대상 기관 중 완전 커버는 8개(나라장터5 + K-Startup1 + 중기부2)뿐
+- 나머지 50개 기관은 API가 없어 HTML 스크래핑이 필요
+- API 없는 기관의 입찰정보를 한 곳에서 보여주는 것이 시스템 경쟁력
+
+#### 부분 커버 — CCEI 입찰공고 (7개)
+현재 CCEI 수집기는 `business_list.json`(지원사업공고)만 수집. 아래 기관의 입찰공고(`allim_list.do`)는 별도 스크래핑 필요.
+
+| # | 기관명 | URL |
+|---|--------|-----|
+| 1 | 경기창조경제혁신센터 | https://ccei.creativekorea.or.kr/gyeonggi/allim/allim_list.do?div_code=2 |
+| 2 | 경남창조경제혁신센터 | https://ccei.creativekorea.or.kr/gyeongnam/allim/allim_list.do?div_code=2 |
+| 3 | 대구창조경제혁신센터 | https://ccei.creativekorea.or.kr/daegu/allim/allim_list.do?div_code=2 |
+| 4 | 부산창조경제혁신센터 | https://ccei.creativekorea.or.kr/busan/allim/allim_list.do?div_code=2 |
+| 5 | 세종창조경제혁신센터 | https://ccei.creativekorea.or.kr/sejong/custom/notice_list.do |
+| 6 | 인천창조경제혁신센터 | https://ccei.creativekorea.or.kr/incheon/custom/notice_list.do |
+| 7 | 충북창조경제혁신센터 | https://ccei.creativekorea.or.kr/chungbuk/custom/notice_list.do |
+
+#### 별도 스크래퍼 필요 (43개)
+
+| # | 기관명 | URL |
+|---|--------|-----|
+| 8 | 강원관광재단 | https://www.gwto.or.kr/www/selectBbsNttList.do?bbsNo=3&key=23 |
+| 9 | 강원정보문화산업진흥원 | https://www.gica.or.kr/Home/H40000/H40200/boardList |
+| 10 | 건국대학교 | https://www.konkuk.ac.kr/konkuk/2243/subview.do |
+| 11 | 경기대진테크노파크 | https://gdtp.or.kr/board/announcement |
+| 12 | 경기도경제과학진흥원 | https://www.gbsa.or.kr/board/bid_info.do |
+| 13 | 경기도일자리재단 | https://www.gjf.or.kr/main/pst/list.do?pst_id=nara_market_bid |
+| 14 | 경남관광재단 | https://gnto.or.kr/sub04/sub04_01.php |
+| 15 | 경남문화예술진흥원 | http://gcaf.or.kr/bbs/board.php?bo_table=sub3_7&me_code=a030 |
+| 16 | 경남콘텐츠코리아랩 | https://www.gnckl.or.kr/bbs/board.php?bo_table=notice3 |
+| 17 | 경남테크노파크 | http://account.more.co.kr/contract/orderalim.php |
+| 18 | 광주정보문화산업진흥원 | https://www.gicon.or.kr/board.es?mid=a10205000000&bid=0020 |
+| 19 | 국토연구원 | https://www.krihs.re.kr/board.es?mid=a10602000000&bid=0012 |
+| 20 | 대전기업정보포털 | https://www.dips.or.kr/pbanc?nPage=1&mid=a10201000000 |
+| 21 | 대전정보문화산업진흥원 | https://www.dicia.or.kr/sub.do?menuIdx=MENU_000000000000100 |
+| 22 | 부산창업포탈 | https://busanstartup.kr/biz_sup?mcode=biz02&deleteYn=N&busi_code=820 |
+| 23 | 서울테크노파크 | http://seoultp.or.kr/user/nd26539.do |
+| 24 | 세종테크노파크 | https://sjtp.or.kr/bbs/board.php?bo_table=notice01 |
+| 25 | 소상공인시장진흥공단 | https://semas.or.kr/web/main/index.kmdc |
+| 26 | 신용보증기금 | https://alio.go.kr/occasional/bidList.do |
+| 27 | 원광대학교 | https://intra.wku.ac.kr/services/contract/cntrc.jsp |
+| 28 | 인천테크노파크 | https://www.itp.or.kr/intro.asp?tmid=14 |
+| 29 | 전남정보문화산업진흥원 | https://www.jcia.or.kr/cf/information/notice/tender/self.do |
+| 30 | 전라북도경제통상진흥원 | http://www.jbba.kr/bbs/board.php?bo_table=sub05_06_02 |
+| 31 | 전라북도콘텐츠융합진흥원 | https://www.jcon.or.kr/board/list.php?bbsId=BBSMSTR_000000000003 |
+| 32 | 전주정보문화산업진흥원 | https://www.jica.or.kr/2016/inner.php?sMenu=A4000 |
+| 33 | 정보통신산업진흥원 | https://www.nipa.kr/home/2-3 |
+| 34 | 제주관광공사 | https://ijto.or.kr/korean/Bd/list.php?btable=tender_info |
+| 35 | 제주콘텐츠진흥원 | https://ofjeju.kr/communication/notifications.htm |
+| 36 | 창업진흥원 | https://www.kised.or.kr/board.es?mid=a10303000000&bid=0005 |
+| 37 | 충남문화관광재단 | https://www.cacf.or.kr/site/board/index.php?table_nm=tbl_culture |
+| 38 | 충남테크노파크 | https://www.ctp.or.kr/community/bid.do |
+| 39 | 충청북도과학기술혁신원 | http://www.cbist.or.kr/home/sub.do?mncd=118 |
+| 40 | 충청북도기업진흥원 | http://www.cba.ne.kr/home/sub.php?menukey=140&cate=00000010 |
+| 41 | 포항테크노파크 | https://www.ptp.or.kr/main/board/index.do?menu_idx=114&manage_idx=3 |
+| 42 | 한국관광공사 | https://touraz.kr/publicTenderList |
+| 43 | 한국디자인진흥원 | http://www.kidp.or.kr/?menuno=1012 |
+| 44 | 한국발명진흥회 | https://www.kipa.org/ |
+| 45 | 한국보육진흥원 | https://www.kcpi.or.kr/kcpi/cyberpr/tender.do |
+| 46 | 한국산업기술진흥원 | https://www.kiat.or.kr/front/board/boardContentsListPage.do?board_id=77 |
+| 47 | 한국예탁결제원 | https://www.ksd.or.kr/ko/about-ksd/ksd-news/bid-notice |
+| 48 | 한국지식재산보호원 | https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000041 |
+| 49 | 한국콘텐츠진흥원 | https://www.kocca.kr/kocca/tender/list.do?menuNo=204106&cate=01 |
+| 50 | 한국환경산업기술원 | https://www.keiti.re.kr/site/keiti/ex/board/List.do?cbIdx=277 |
+
+#### 구현 전략
+
+**범용 스크래퍼 프레임워크**
+- 50개를 개별로 만들지 않고, 설정(config) 기반 범용 스크래퍼를 설계
+- 각 사이트의 HTML 구조를 JSON 설정으로 정의 (CSS 셀렉터, URL 패턴)
+- `collect_sources` 테이블에 `scraper_config` 컬럼 추가 또는 별도 설정 파일
+
+```json
+{
+  "list_url": "https://example.or.kr/board/list.php?bo_table=bid",
+  "list_selector": "table.board_list tbody tr",
+  "title_selector": "td.title a",
+  "date_selector": "td.date",
+  "link_pattern": "/board/view.php?no={id}",
+  "pagination": "?page={page}",
+  "encoding": "utf-8"
+}
+```
+
+**단계적 접근**
+- 1단계: 범용 스크래퍼 프레임워크 구현
+- 2단계: URL 패턴이 유사한 사이트 그룹별 스크래퍼 설정 작성 (PHP 게시판, board.es 등)
+- 3단계: 특수 사이트 개별 대응
+- 4단계: CCEI 입찰공고 스크래퍼 (allim_list.do, 7개 센터 통합)
+
+**키워드 매칭 방식**
+- 스크래핑 대상은 이미 특정 기관의 입찰공고이므로 키워드 매칭 없이 전체 수집도 가능
+- 옵션: 키워드 필터 ON/OFF 설정 (출처별)
+
+#### 구현 항목
+- [ ] 범용 스크래퍼 프레임워크 설계 (설정 기반 HTML 파싱)
+- [ ] `collect_sources`에 scraper_config 지원 추가
+- [ ] CCEI 입찰공고 스크래퍼 (allim_list.do — 7개 센터)
+- [ ] PHP 게시판 공통 스크래퍼 (board.php 패턴 — 5~6개 사이트)
+- [ ] board.es 공통 스크래퍼 (4~5개 사이트)
+- [ ] 기타 개별 사이트 스크래퍼 순차 구현
+- [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
+- [ ] 스크래핑 에러 알림 (사이트 개편 감지)
+
 ### Phase B: 입찰 준비 페이지
 - [ ] 입찰 준비 페이지 UI
 - [ ] 체크리스트 기능
