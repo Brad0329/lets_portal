@@ -185,9 +185,9 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
                     except ValueError:
                         pass
 
-                # 날짜 파싱 실패 시 오늘 날짜 사용
+                # 날짜 파싱 실패 시 스킵 (날짜 없는 행은 공지/안내글)
                 if not parsed_date:
-                    parsed_date = datetime.now().strftime("%Y-%m-%d")
+                    continue
 
                 # 중복 방지
                 bid_no = f"SCR-{source_key}-{abs(hash(title + link)) % 1000000:06d}"
