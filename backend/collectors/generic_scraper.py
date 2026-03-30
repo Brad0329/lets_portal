@@ -210,6 +210,9 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
     page_param_key = config.get("page_param_key", "")  # POST data 내 페이지 번호 키
     grid_selector = config.get("grid_selector", "")  # 응답 HTML 내 데이터 영역 셀렉터
 
+    # 날짜 없는 항목 허용 (카드형 레이아웃 등 날짜가 리스트에 없는 사이트)
+    skip_no_date = config.get("skip_no_date", True)
+
     # 세션 초기화 URL (쿠키 획득용)
     session_init_url = config.get("session_init_url", "")
 
@@ -313,8 +316,10 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
                         pass
 
                 # 날짜 파싱 실패 시 스킵 (날짜 없는 행은 공지/안내글)
-                if not parsed_date:
+                if not parsed_date and skip_no_date:
                     continue
+                if not parsed_date:
+                    parsed_date = datetime.now().strftime("%Y-%m-%d")
 
                 # 중복 방지
                 bid_no = f"SCR-{source_key}-{abs(hash(title + link)) % 1000000:06d}"

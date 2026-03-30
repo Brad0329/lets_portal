@@ -468,5 +468,18 @@
     "page_param_key": "pageIndex",
     "encoding": "utf-8",
     "max_pages": 3
+  },
+  {
+    "name": "제주콘텐츠진흥원",
+    "source_key": "ofjeju",
+    "list_url": "https://ofjeju.kr/bussiness/businessinfo/business.htm",
+    "list_selector": "div.app-list",
+    "title_selector": "p.al-tit a",
+    "date_selector": "p.al-date",
+    "link_attr": "href",
+    "link_base": "https://ofjeju.kr",
+    "skip_no_date": false,
+    "encoding": "utf-8",
+    "max_pages": 1
   }
 ]
