@@ -126,13 +126,18 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
     notices = []
     seen = set()
 
+    # offset 기반 페이지네이션 지원
+    offset_size = config.get("offset_size", 0)
+
     for page in range(1, max_pages + 1):
         # URL 구성
         if page == 1:
             url = list_url
         elif pagination:
-            sep = "&" if "?" in list_url else "?"
-            url = list_url + pagination.replace("{page}", str(page))
+            page_val = str(page)
+            if offset_size:
+                page_val = str((page - 1) * offset_size)
+            url = list_url + pagination.replace("{page}", page_val).replace("{offset}", page_val)
         else:
             break  # 페이지네이션 없으면 1페이지만
 

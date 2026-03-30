@@ -363,5 +363,45 @@
     "pagination": "&pageIndex={page}",
     "encoding": "utf-8",
     "max_pages": 3
+  },
+  {
+    "name": "경기대진테크노파크",
+    "source_key": "gdtp",
+    "list_url": "https://gdtp.or.kr/board/announcement",
+    "list_selector": "div.colgroup.noti",
+    "title_selector": "h3 a",
+    "date_selector": "div.bdate",
+    "link_attr": "href",
+    "link_base": "",
+    "pagination": "?page={page}",
+    "encoding": "utf-8",
+    "max_pages": 3
+  },
+  {
+    "name": "세종테크노파크",
+    "source_key": "sjtp",
+    "list_url": "https://sjtp.or.kr/bbs/board.php?bo_table=notice01",
+    "list_selector": "table tbody tr",
+    "title_selector": "td.td_subject a",
+    "date_selector": "td.td_datetime",
+    "link_attr": "href",
+    "link_base": "",
+    "pagination": "&page={page}",
+    "encoding": "utf-8",
+    "max_pages": 3
+  },
+  {
+    "name": "한국발명진흥회",
+    "source_key": "kipa",
+    "list_url": "https://www.kipa.org/kipa/notice/kw_0402.jsp?mode=list&board_no=15",
+    "list_selector": "table.list_table tr",
+    "title_selector": "td:nth-child(2) a",
+    "date_selector": "td:nth-child(3)",
+    "link_attr": "href",
+    "link_base": "https://www.kipa.org/kipa/notice/kw_0402.jsp",
+    "pagination": "&pager.offset={offset}",
+    "offset_size": 10,
+    "encoding": "utf-8",
+    "max_pages": 3
   }
 ]

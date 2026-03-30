@@ -210,6 +210,10 @@ def init_db():
         ("한국산업기술진흥원", "scraper"),
         ("한국콘텐츠진흥원", "scraper"),
         ("한국환경산업기술원", "scraper"),
+        # Phase A.3 추가분
+        ("경기대진테크노파크", "scraper"),
+        ("세종테크노파크", "scraper"),
+        ("한국발명진흥회", "scraper"),
     ]
     for name, ctype in initial_sources:
         cursor.execute(
