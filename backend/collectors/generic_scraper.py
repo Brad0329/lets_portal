@@ -41,20 +41,38 @@ def _load_configs() -> list[dict]:
 
 
 def _parse_date(text: str) -> str | None:
-    """다양한 날짜 형식을 yyyy-MM-dd로 변환"""
+    """다양한 날짜 형식을 yyyy-MM-dd로 변환. 텍스트 내 날짜 패턴 자동 감지."""
     if not text:
         return None
-    text = text.strip().replace(".", "-").replace("/", "-")
-    # yyyy-MM-dd 이미 맞는 경우
-    m = re.search(r"(\d{4}-\d{2}-\d{2})", text)
+    text = text.strip()
+
+    # 1) yyyy.MM.dd / yyyy-MM-dd / yyyy/MM/dd (원본에서 먼저 탐색)
+    m = re.search(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", text)
     if m:
-        return m.group(1)
-    # yy-MM-dd
-    m = re.search(r"(\d{2})-(\d{2})-(\d{2})", text)
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+
+    # 2) yy.MM.dd / yy-MM-dd (2자리 연도)
+    m = re.search(r"(\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})", text)
     if m:
         y = int(m.group(1))
         year = 2000 + y if y < 80 else 1900 + y
-        return f"{year}-{m.group(2)}-{m.group(3)}"
+        return f"{year}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+
+    # 3) yyyyMMdd (구분자 없이 8자리)
+    m = re.search(r"(\d{4})(\d{2})(\d{2})", text)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+
+    # 4) 한국어 날짜: yyyy년 MM월 dd일 / MM월 dd일
+    m = re.search(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일", text)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+
+    # 5) 기간 형식에서 첫 번째 날짜 추출: "2026-03-01 ~ 2026-03-31"
+    m = re.search(r"(\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})\s*[~∼\-]\s*\d{4}", text)
+    if m:
+        return _parse_date(m.group(1))
+
     return None
 
 
@@ -129,7 +147,8 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
                 logger.warning(f"  {name} 페이지 {page}: HTTP {resp.status_code}")
                 break
 
-            soup = BeautifulSoup(resp.text, "html.parser")
+            parser = config.get("parser", "html.parser")
+            soup = BeautifulSoup(resp.text, parser)
             rows = soup.select(list_sel)
 
             if not rows:
