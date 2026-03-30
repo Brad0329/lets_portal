@@ -403,5 +403,52 @@
     "offset_size": 10,
     "encoding": "utf-8",
     "max_pages": 3
+  },
+  {
+    "name": "인천테크노파크",
+    "source_key": "itp",
+    "list_url": "https://www.itp.or.kr/intro.asp?tmid=14",
+    "list_selector": "table tr",
+    "title_selector": "td:nth-child(3) a",
+    "date_selector": "td:nth-child(4)",
+    "link_attr": "href",
+    "link_base": "https://www.itp.or.kr",
+    "link_js_regex": "fncShow\\('(\\d+)'\\)",
+    "link_template": "https://www.itp.or.kr/intro.asp?tmid=14&seq={id}",
+    "session_init_url": "https://www.itp.or.kr/",
+    "post_data": {
+      "search": "1",
+      "tmid": "14",
+      "bid": "2",
+      "PageShowSize": "10"
+    },
+    "page_param_key": "PageNum",
+    "encoding": "utf-8",
+    "max_pages": 3
+  },
+  {
+    "name": "건국대학교",
+    "source_key": "konkuk",
+    "list_url": "https://www.konkuk.ac.kr/konkuk/2243/subview.do",
+    "list_selector": "table tr",
+    "title_selector": "td:nth-child(3) a",
+    "date_selector": "td:nth-child(4)",
+    "link_attr": "href",
+    "link_base": "https://www.konkuk.ac.kr/konkuk/2243/subview.do",
+    "encoding": "utf-8",
+    "max_pages": 1
+  },
+  {
+    "name": "대전기업정보포털",
+    "source_key": "dips",
+    "list_url": "https://www.dips.or.kr/pbanc?mid=a10201000000",
+    "list_selector": "table tbody tr",
+    "title_selector": "td:nth-child(4) a",
+    "date_selector": "td:nth-child(7)",
+    "link_attr": "href",
+    "link_base": "",
+    "pagination": "&nPage={page}",
+    "encoding": "utf-8",
+    "max_pages": 3
   }
 ]

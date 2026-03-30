@@ -214,6 +214,9 @@ def init_db():
         ("경기대진테크노파크", "scraper"),
         ("세종테크노파크", "scraper"),
         ("한국발명진흥회", "scraper"),
+        ("인천테크노파크", "scraper"),
+        ("건국대학교", "scraper"),
+        ("대전기업정보포털", "scraper"),
         # CCEI 입찰공고 7개 지역
         ("CCEI-경기", "scraper"),
         ("CCEI-경남", "scraper"),

@@ -1,6 +1,6 @@
 # Phase A.3: 개별 기관 스크래핑 확장 — 작업 로그
 
-## 작업일: 2026-03-29 ~ 03-30
+## 작업일: 2026-03-29 ~ 03-30 (추가 작업 03-30 오후)
 
 ## 목표
 API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
@@ -20,6 +20,9 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - CCEI 입찰공고 JSON API 수집 (`scrape_ccei_allim`)
 - JSON 설정(CSS 셀렉터, URL 패턴)으로 다양한 사이트 대응
 - offset 기반 페이지네이션 지원 (`offset_size` 설정)
+- POST 페이지네이션 지원 (`post_data`, `page_param_key` 설정)
+- 세션 쿠키 초기화 지원 (`session_init_url` 설정)
+- JS 링크 변환 지원 (`link_js_regex`, `link_template` 설정)
 - 사이트별 parser 선택 지원 (html.parser/lxml)
 - 주요 함수:
   - `scrape_site(config, days)` — 단일 사이트 HTML 스크래핑
@@ -27,17 +30,17 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
   - `_parse_date(text)` — 다양한 날짜 형식 파싱 (yyyy.MM.dd, yy.MM.dd, yyyyMMdd, 한국어, 기간)
   - `_match_keywords(notices, keywords)` — 제목 기준 키워드 매칭
   - `save_to_db(notices)` — bid_notices UPSERT
-  - `collect_all_scrapers(mode)` — 38개 일괄 실행
+  - `collect_all_scrapers(mode)` — 41개 일괄 실행
 
 ### 2. 스크래퍼 설정 파일 (신규)
 - **파일:** `backend/collectors/scraper_configs.json`
-- 31개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
+- 34개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
 - 사이트 HTML 구조 분석 후 셀렉터 개별 조정 완료
 
 ### 3. DB 변경
 - **파일:** `backend/database.py`
-- `collect_sources` 테이블에 38개 행 추가 (`collector_type="scraper"`)
-  - HTML 스크래핑 31개 + CCEI 입찰공고 7개
+- `collect_sources` 테이블에 41개 행 추가 (`collector_type="scraper"`)
+  - HTML 스크래핑 34개 + CCEI 입찰공고 7개
 - INSERT OR IGNORE로 중복 방지
 
 ### 4. 수집 로직 연동
@@ -77,19 +80,25 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - 7개 지역: 경기/경남/대구/부산/세종/인천/충북
 - `scrape_ccei_allim()` 함수로 구현
 
+### 제외 사이트 3개 재검증 → 복구 추가 (03-30 오후)
+- **인천테크노파크**: 사이트 정상 확인 (이전 검증 시 일시 장애), POST 페이지네이션 + 세션 쿠키 필요 → 수집 19건/매칭 12건
+- **건국대학교**: SSO 리다이렉트 후 로그인 없이 정상 접근 가능, K2Web CMS 구조 → 수집 23건/매칭 6건
+- **대전기업정보포털**: 지원사업 공고이지만 사실상 입찰공고 성격, GET 페이지네이션 → 수집 30건/매칭 29건
+- `generic_scraper.py`에 POST 페이지네이션, 세션 초기화, JS 링크 변환 기능 추가
+
 ## 최종 테스트 결과
-- **38개 사이트 전체 성공 (실패 0)**
+- **41개 사이트 전체 성공 (실패 0)**
 - 소요시간: 약 50~60초
-- 수집 63건 → 키워드 매칭 45건 → DB 저장 45건
+- 수집 63건 → 키워드 매칭 45건 → DB 저장 45건 (03-30 기준, 신규 3개 제외)
 
 ## 사이트 검증 결과 종합
 
 | 구분 | 개수 | 상태 |
 |------|------|------|
-| HTML 스크래핑 | 31개 | ✅ 구현 완료 |
+| HTML 스크래핑 | 34개 | ✅ 구현 완료 |
 | CCEI 입찰공고 JSON | 7개 | ✅ 구현 완료 |
-| **합계** | **38개** | **일괄 수집 가능** |
-| 제외 (입찰 아님) | 4개 | 대전기업정보포털, 부산창업포탈, 건국대, 인천TP |
+| **합계** | **41개** | **일괄 수집 가능** |
+| 제외 (입찰 아님) | 1개 | 부산창업포탈 |
 | 추가 조치 필요 | 4개 | 경남TP(URL변경), 대전정보문화(SSL), 전주정보문화(SSL+URL), 한국예탁결제원(SPA) |
 | URL 변경 필요 | 2개 | 제주콘텐츠진흥원, 소상공인시장진흥공단(실효성 낮음) |
 | JS 렌더링 보류 | 1개 | 한국지식재산보호원 |

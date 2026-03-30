@@ -203,6 +203,17 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
     # 페이지네이션
     pagination = config.get("pagination", "")  # e.g. "&page={page}" or "?page={page}"
 
+    # POST 페이지네이션 지원
+    post_data = config.get("post_data")  # POST 요청 시 전송할 form data
+    page_param_key = config.get("page_param_key", "")  # POST data 내 페이지 번호 키
+
+    # 세션 초기화 URL (쿠키 획득용)
+    session_init_url = config.get("session_init_url", "")
+
+    # JS 링크 패턴 → 실제 URL 변환 (e.g. "javascript:fncShow('10513')" → 실제 URL)
+    link_js_regex = config.get("link_js_regex", "")  # e.g. "fncShow\\('(\\d+)'\\)"
+    link_template = config.get("link_template", "")  # e.g. "/intro.asp?tmid=14&seq={id}"
+
     cutoff = datetime.now() - timedelta(days=days)
     notices = []
     seen = set()
@@ -210,20 +221,36 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
     # offset 기반 페이지네이션 지원
     offset_size = config.get("offset_size", 0)
 
+    # 세션 사용 (쿠키 유지)
+    session = requests.Session()
+    if session_init_url:
+        try:
+            session.get(session_init_url, headers=DEFAULT_HEADERS, timeout=10, verify=False)
+        except requests.RequestException:
+            pass
+
     for page in range(1, max_pages + 1):
         # URL 구성
-        if page == 1:
+        if page == 1 and not post_data:
             url = list_url
-        elif pagination:
+        elif pagination and not post_data:
             page_val = str(page)
             if offset_size:
                 page_val = str((page - 1) * offset_size)
             url = list_url + pagination.replace("{page}", page_val).replace("{offset}", page_val)
+        elif post_data:
+            url = list_url
         else:
             break  # 페이지네이션 없으면 1페이지만
 
         try:
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=15, verify=False)
+            if post_data:
+                form = dict(post_data)
+                if page_param_key:
+                    form[page_param_key] = str(page)
+                resp = session.post(url, headers=DEFAULT_HEADERS, data=form, timeout=15, verify=False)
+            else:
+                resp = session.get(url, headers=DEFAULT_HEADERS, timeout=15, verify=False)
             if encoding.lower() != "utf-8":
                 resp.encoding = encoding
             else:
@@ -253,7 +280,11 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
 
                 # URL 추출
                 link = title_el.get(link_attr, "")
-                if link and not link.startswith("http"):
+                if link_js_regex and link_template and link:
+                    js_m = re.search(link_js_regex, link)
+                    if js_m:
+                        link = link_template.replace("{id}", js_m.group(1))
+                if link and not link.startswith("http") and not link.startswith("javascript:"):
                     link = urljoin(link_base or list_url, link)
 
                 # 날짜 추출
