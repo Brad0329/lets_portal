@@ -505,5 +505,17 @@
     "link_base": "https://www.jica.or.kr/2025/",
     "encoding": "utf-8",
     "max_pages": 3
+  },
+  {
+    "name": "한국지식재산보호원",
+    "source_key": "koipa",
+    "list_url": "https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000042",
+    "list_selector": "table tbody tr",
+    "title_selector": "td:nth-child(2) a",
+    "date_selector": "td:nth-child(5)",
+    "link_attr": "href",
+    "link_base": "https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000042",
+    "encoding": "utf-8",
+    "max_pages": 3
   }
 ]

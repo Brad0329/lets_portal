@@ -35,7 +35,7 @@ for i, h in enumerate(headers, 1):
 ws.row_dimensions[2].height = 25
 
 sections = [
-    ("✅ 구현 완료 — HTML 스크래핑 (38개)", PatternFill('solid', fgColor='C6EFCE'), Font(name='Arial', bold=True, size=11, color='006100'), [
+    ("✅ 구현 완료 — HTML 스크래핑 (39개)", PatternFill('solid', fgColor='C6EFCE'), Font(name='Arial', bold=True, size=11, color='006100'), [
         (1, "강원관광재단", "https://www.gwto.or.kr/www/selectBbsNttList.do?bbsNo=3&key=23", "고시/공고"),
         (2, "강원정보문화산업진흥원", "https://www.gica.or.kr/Home/H40000/H40200/boardList", "입찰공고"),
         (3, "경기도경제과학진흥원", "https://www.gbsa.or.kr/board/bid_info.do", "입찰정보 전용"),
@@ -74,24 +74,22 @@ sections = [
         (36, "제주콘텐츠진흥원", "https://ofjeju.kr/bussiness/businessinfo/business.htm", "카드형 레이아웃, skip_no_date"),
         (37, "대전정보문화산업진흥원", "https://www.dicia.or.kr/sub.do?menuIdx=MENU_000000000000100", "SSL verify=False, board.es 구조"),
         (38, "전주정보문화산업진흥원", "https://www.jica.or.kr/2025/inner.php?sMenu=A4000", "SSL verify=False, URL /2016/→/2025/ 변경"),
+        (39, "한국지식재산보호원", "https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000042", "일반 HTML 테이블 (JS 렌더링 아님)"),
     ]),
     ("✅ 구현 완료 — CCEI 입찰공고 JSON API (7개)", PatternFill('solid', fgColor='B7DEE8'), Font(name='Arial', bold=True, size=11, color='003366'), [
-        (39, "CCEI-경기", "https://ccei.creativekorea.or.kr/gyeonggi/allim/allimList.json", "POST JSON API"),
-        (40, "CCEI-경남", "https://ccei.creativekorea.or.kr/gyeongnam/allim/allimList.json", "POST JSON API"),
-        (41, "CCEI-대구", "https://ccei.creativekorea.or.kr/daegu/allim/allimList.json", "POST JSON API"),
-        (42, "CCEI-부산", "https://ccei.creativekorea.or.kr/busan/allim/allimList.json", "POST JSON API"),
-        (43, "CCEI-세종", "https://ccei.creativekorea.or.kr/sejong/allim/allimList.json", "POST JSON API"),
-        (44, "CCEI-인천", "https://ccei.creativekorea.or.kr/incheon/allim/allimList.json", "POST JSON API"),
-        (45, "CCEI-충북", "https://ccei.creativekorea.or.kr/chungbuk/allim/allimList.json", "POST JSON API"),
+        (40, "CCEI-경기", "https://ccei.creativekorea.or.kr/gyeonggi/allim/allimList.json", "POST JSON API"),
+        (41, "CCEI-경남", "https://ccei.creativekorea.or.kr/gyeongnam/allim/allimList.json", "POST JSON API"),
+        (42, "CCEI-대구", "https://ccei.creativekorea.or.kr/daegu/allim/allimList.json", "POST JSON API"),
+        (43, "CCEI-부산", "https://ccei.creativekorea.or.kr/busan/allim/allimList.json", "POST JSON API"),
+        (44, "CCEI-세종", "https://ccei.creativekorea.or.kr/sejong/allim/allimList.json", "POST JSON API"),
+        (45, "CCEI-인천", "https://ccei.creativekorea.or.kr/incheon/allim/allimList.json", "POST JSON API"),
+        (46, "CCEI-충북", "https://ccei.creativekorea.or.kr/chungbuk/allim/allimList.json", "POST JSON API"),
     ]),
     ("✅ 구현 완료 — 한국예탁결제원 JSON API (1개)", PatternFill('solid', fgColor='B7DEE8'), Font(name='Arial', bold=True, size=11, color='003366'), [
-        (46, "한국예탁결제원", "https://www.ksd.or.kr/ko/api/content?menuId=KR_ABT_070300", "React SPA → JSON API 직접 호출"),
+        (47, "한국예탁결제원", "https://www.ksd.or.kr/ko/api/content?menuId=KR_ABT_070300", "React SPA → JSON API 직접 호출"),
     ]),
     ("🔄 URL 변경 필요 (1개)", PatternFill('solid', fgColor='FCD5B4'), Font(name='Arial', bold=True, size=11, color='974706'), [
-        (47, "소상공인시장진흥공단", "https://semas.or.kr/web/board/webBoardList.kmdc?bCd=220&pNm=BOA0102", "입찰정보 5건뿐, 실효성 낮음"),
-    ]),
-    ("🔧 JS 렌더링 보류 (1개)", PatternFill('solid', fgColor='E2EFDA'), Font(name='Arial', bold=True, size=11, color='375623'), [
-        (48, "한국지식재산보호원", "https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000042", "JS 렌더링 — BeautifulSoup 불가, API 또는 Selenium 필요"),
+        (48, "소상공인시장진흥공단", "https://semas.or.kr/web/board/webBoardList.kmdc?bCd=220&pNm=BOA0102", "입찰정보 5건뿐, 실효성 낮음"),
     ]),
     ("❌ 제외 (1개)", PatternFill('solid', fgColor='FFC7CE'), Font(name='Arial', bold=True, size=11, color='9C0006'), [
         (49, "부산창업포탈", "https://busanstartup.kr/biz_sup?mcode=biz02&deleteYn=N&busi_code=820", "창업지원 프로그램, 입찰 아님"),
@@ -136,7 +134,7 @@ for section_label, section_fill, section_label_font, items in sections:
 
 row += 1
 ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
-ws.cell(row=row, column=1, value="※ 구현 완료 46개 사이트는 일괄 수집 버튼 1개로 수집 가능").font = Font(name='Arial', size=10, italic=True, color='666666')
+ws.cell(row=row, column=1, value="※ 구현 완료 47개 사이트는 일괄 수집 버튼 1개로 수집 가능").font = Font(name='Arial', size=10, italic=True, color='666666')
 
 out = r"C:\Users\user\Documents\lets_portal\work_log2\site_verification.xlsx"
 wb.save(out)
