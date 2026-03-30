@@ -237,8 +237,38 @@
             border-radius: 5px;
             font-size: 0.82rem;
         }
+        .scraper-item-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
         .scraper-item-name { color: #333; font-weight: 500; }
-        .scraper-item-meta { color: #999; font-size: 0.75rem; }
+        .scraper-item-url {
+            font-size: 0.7rem;
+            color: #2980b9;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+        .scraper-item-url:hover { text-decoration: underline; }
+        .scraper-item-meta { color: #999; font-size: 0.75rem; white-space: nowrap; }
+        .scraper-item-cnt {
+            color: #2980b9;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .scraper-item-cnt:hover { text-decoration: underline; color: #1a5276; }
+        .scraper-timer {
+            display: none;
+            font-size: 0.85rem;
+            color: #e67e22;
+            font-weight: 600;
+            min-width: 40px;
+        }
     </style>
 </head>
 <body>
@@ -262,6 +292,7 @@
                     <div class="progress-wrap" id="scraper-progress-wrap">
                         <div class="progress-bar" id="scraper-progress-bar"></div>
                     </div>
+                    <span class="scraper-timer" id="scraper-timer"></span>
                     <span class="collect-result" id="scraper-result"></span>
                 </div>
             </div>

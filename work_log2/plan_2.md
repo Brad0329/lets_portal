@@ -429,6 +429,11 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [x] 제주콘텐츠진흥원 URL 변경 → 카드형 레이아웃, skip_no_date 옵션으로 구현 완료
 - [x] 추가 조치 사이트 3개 완료: 대전정보문화(SSL), 전주정보문화(SSL+URL변경), 한국예탁결제원(JSON API)
 - [x] JS SPA/렌더링 사이트 대응 — 한국예탁결제원(JSON API), 한국지식재산보호원(실제로 HTML 테이블)
+- [x] 일괄 수집 UX 개선 — 경과 타이머, 결과 요약, 기관 목록 자동 펼침, 건수→공고리스트 이동
+- [x] 수집 시간 통일 — batch_time으로 버튼 누른 시점 기록
+- [x] 기관 목록에 사이트 URL 표시 (도메인 링크)
+- [x] 서버 측 중복 수집 방지 (threading.Lock, 409 응답)
+- [x] JS 링크 변환 수정 — 건국대(다중 그룹), 한국지식재산보호원, 부산창업포탈(상세 URL)
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)
 

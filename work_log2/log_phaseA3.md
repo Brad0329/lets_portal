@@ -102,9 +102,40 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - 카드형 레이아웃 (`div.app-list`) — 날짜가 리스트에 없음
 - `skip_no_date: false` 옵션 추가 (오늘 날짜 대체) → 수집 12건/매칭 11건
 
+## 수집 UX 개선 (03-30 추가)
+
+### 일괄 수집 UX 개선
+- 경과 시간 타이머 표시 (수집중 실시간 카운트)
+- 수집 완료 시 결과 요약 한 줄 표시: `완료 — 48/48개 성공 | 수집 63건, 매칭 45건, 신규 3건 (73초)`
+- 수집 시작 시 기관 목록 자동 펼침
+
+### 수집 시간 통일
+- 기존: 각 기관별 스크래핑 완료 시점(`datetime('now')`) → 48개 시간 제각각
+- 변경: 버튼 누른 시점(`batch_time`)을 전달하여 모든 기관 동일 시간 기록
+
+### 기관 목록에 URL 표시
+- API(`/api/sources`)에서 scraper 출처에 `site_url` 필드 추가
+- `scraper_configs.json` + CCEI/KSD/부산 하드코딩에서 URL 매핑 생성
+- 기관명 아래에 도메인 링크 표시 (클릭 시 새 탭)
+
+### 기관 목록 건수 클릭 → 공고 리스트 필터 이동
+- 건수 클릭 시 `/index.html?source=기관명`으로 이동
+- `app.js`에서 URL 파라미터 `?source=` 감지 → 출처 필터 자동 설정
+
+### 서버 측 중복 수집 방지
+- `threading.Lock` + `_collecting_targets` set으로 동시 실행 차단
+- 수집 중 재요청 시 409 응답: "이미 수집이 진행 중입니다"
+- 개별 출처 수집도 동일하게 보호
+
+### JS 링크 → 실제 URL 변환 수정
+- **건국대학교**: `javascript:jf_artclView('konkuk','sptBid','4159')` → `https://www.konkuk.ac.kr/bid/konkuk/4159/sptBidView`
+  - `link_js_regex`/`link_template` 다중 그룹(`{1}`,`{2}`,`{3}`) 지원 추가
+- **한국지식재산보호원**: `javascript:pageviewform('6782')` → `https://www.koipa.re.kr/home/board/brdDetail.do?menu_cd=000042&num=6782`
+- **부산창업포탈**: 리스트 URL(`/biz_sup?busi_code=`) → 상세 URL(`/biz_sup/{busi_code}?mcode=biz02`)
+
 ## 최종 테스트 결과
 - **48개 사이트 전체 성공 (실패 0)**
-- 소요시간: 약 50~60초
+- 소요시간: 약 70~80초
 - 수집 63건 → 키워드 매칭 45건 → DB 저장 45건 (03-30 기준, 신규 3개 제외)
 
 ## 사이트 검증 결과 종합
@@ -135,9 +166,6 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 | `work_log2/log_phaseA3.md` | 신규 (작업 로그) |
 
 ## 향후 작업
-- [ ] 추가 조치 필요 4개 사이트 (경남TP URL변경, SSL 사이트 2개, 한국예탁결제원 SPA)
-- [ ] 제주콘텐츠진흥원 URL 변경
-- [ ] 한국지식재산보호원 JS 렌더링 대응
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)
 - [ ] Phase E에서 자동 스케줄러 연동

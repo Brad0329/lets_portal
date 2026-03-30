@@ -240,10 +240,27 @@ function renderScraperSection() {
 
     listEl.innerHTML = scrapers.map(s => {
         const lastAt = s.last_collected_at ? formatDateTime(s.last_collected_at) : '-';
-        const cnt = s.last_collected_count != null ? `${s.last_collected_count}건` : '';
+        const cnt = s.last_collected_count != null ? s.last_collected_count : 0;
+        const cntDisplay = cnt > 0 ? `${cnt}건` : '-';
+        const siteUrl = s.site_url || '';
+        // URL에서 도메인만 추출하여 표시
+        let domainDisplay = '';
+        if (siteUrl) {
+            try {
+                const u = new URL(siteUrl);
+                domainDisplay = u.hostname.replace(/^www\./, '');
+            } catch { domainDisplay = siteUrl; }
+        }
+        // 건수 클릭 시 공고 리스트로 이동 (해당 기관 필터)
+        const cntLink = cnt > 0
+            ? `<a class="scraper-item-cnt" href="/index.html?source=${encodeURIComponent(s.name)}" title="이 기관의 공고 보기">${cntDisplay}</a>`
+            : `<span>${cntDisplay}</span>`;
         return `<div class="scraper-item">
-            <span class="scraper-item-name">${escapeHtml(s.name)}</span>
-            <span class="scraper-item-meta">${lastAt} ${cnt}</span>
+            <div class="scraper-item-left">
+                <span class="scraper-item-name">${escapeHtml(s.name)}</span>
+                ${siteUrl ? `<a class="scraper-item-url" href="${escapeHtml(siteUrl)}" target="_blank" title="${escapeHtml(siteUrl)}">${escapeHtml(domainDisplay)}</a>` : ''}
+            </div>
+            <span class="scraper-item-meta">${lastAt} / ${cntLink}</span>
         </div>`;
     }).join('');
 }
@@ -260,23 +277,63 @@ function toggleScraperList() {
     }
 }
 
+let scraperTimerId = null;
+
 async function collectAllScrapers() {
     const btn = document.getElementById('btn-scraper-collect');
     const resultEl = document.getElementById('scraper-result');
     const progressWrap = document.getElementById('scraper-progress-wrap');
     const progressBar = document.getElementById('scraper-progress-bar');
+    const timerEl = document.getElementById('scraper-timer');
 
     btn.disabled = true;
     btn.textContent = '수집중...';
     btn.classList.add('collecting');
     resultEl.textContent = '';
+    resultEl.style.color = '';
 
     progressWrap.classList.add('active');
     progressBar.classList.add('indeterminate');
 
+    // 경과 시간 타이머 시작
+    const startTime = Date.now();
+    timerEl.style.display = 'inline';
+    timerEl.textContent = '0초';
+    scraperTimerId = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        timerEl.textContent = `${elapsed}초`;
+    }, 1000);
+
+    // 기관 목록 자동 펼침 (수집 진행 상황 보이도록)
+    const list = document.getElementById('scraper-list');
+    const icon = document.getElementById('scraper-toggle-icon');
+    if (list.style.display === 'none') {
+        list.style.display = 'grid';
+        icon.innerHTML = '&#9660;';
+    }
+
     try {
         const resp = await fetch('/api/collect?target=scrapers', { method: 'POST' });
         const data = await resp.json();
+
+        // 중복 실행 감지 (409)
+        if (resp.status === 409) {
+            clearInterval(scraperTimerId);
+            timerEl.style.display = 'none';
+            resultEl.style.color = '#e67e22';
+            resultEl.textContent = data.error || '이미 수집이 진행 중입니다.';
+            progressBar.classList.remove('indeterminate');
+            progressWrap.classList.remove('active');
+            btn.disabled = false;
+            btn.textContent = '일괄 수집';
+            btn.classList.remove('collecting');
+            return;
+        }
+
+        // 타이머 정지
+        clearInterval(scraperTimerId);
+        const totalSec = Math.floor((Date.now() - startTime) / 1000);
+        timerEl.textContent = `${totalSec}초`;
 
         progressBar.classList.remove('indeterminate');
         progressBar.style.width = '100%';
@@ -286,14 +343,22 @@ async function collectAllScrapers() {
             resultEl.textContent = `오류: ${data.error}`;
         } else {
             resultEl.style.color = '#27ae60';
-            resultEl.textContent = `성공 ${data.success}/${data.total}개 (수집 ${data.collected}건, 매칭 ${data.matched}건, 신규 ${data.inserted}건)`;
+            const failMsg = data.failed > 0 ? `, 실패 ${data.failed}` : '';
+            resultEl.textContent = `완료 — ${data.success}/${data.total}개 성공${failMsg} | 수집 ${data.collected}건, 매칭 ${data.matched}건, 신규 ${data.inserted}건 (${totalSec}초)`;
         }
 
-        await new Promise(r => setTimeout(r, 800));
+        // 출처 목록 새로고침 → 각 기관별 수집 시간 갱신
         await loadSources();
         renderSources();
         renderScraperSection();
+
+        // 완료 후에도 기관 목록 펼친 상태 유지
+        const listAfter = document.getElementById('scraper-list');
+        const iconAfter = document.getElementById('scraper-toggle-icon');
+        listAfter.style.display = 'grid';
+        iconAfter.innerHTML = '&#9660;';
     } catch (e) {
+        clearInterval(scraperTimerId);
         resultEl.style.color = '#e74c3c';
         resultEl.textContent = '수집 실패: ' + e.message;
     } finally {
@@ -304,7 +369,7 @@ async function collectAllScrapers() {
         setTimeout(() => {
             progressWrap.classList.remove('active');
             progressBar.style.width = '0%';
-        }, 1000);
+        }, 2000);
     }
 }
 

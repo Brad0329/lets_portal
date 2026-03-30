@@ -735,14 +735,47 @@ def get_organizations(request: Request):
 
 @app.get("/api/sources")
 def get_sources(request: Request):
-    """출처 목록 (수집 상태 포함)"""
+    """출처 목록 (수집 상태 포함 + scraper URL)"""
     require_login(request)
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM collect_sources ORDER BY id")
     sources = [dict(row) for row in cursor.fetchall()]
     conn.close()
+
+    # scraper 출처에 URL 정보 추가
+    scraper_sources = [s for s in sources if s.get("collector_type") == "scraper"]
+    if scraper_sources:
+        url_map = _build_scraper_url_map()
+        for s in scraper_sources:
+            s["site_url"] = url_map.get(s["name"], "")
+
     return sources
+
+
+def _build_scraper_url_map() -> dict:
+    """scraper_configs.json + 하드코딩 소스에서 기관명→URL 매핑 생성"""
+    import json as _json
+    url_map = {}
+    configs_path = os.path.join(os.path.dirname(__file__), "collectors", "scraper_configs.json")
+    if os.path.exists(configs_path):
+        with open(configs_path, "r", encoding="utf-8") as f:
+            for cfg in _json.load(f):
+                name = cfg.get("name", "")
+                url = cfg.get("list_url", "")
+                # list_url에서 도메인까지만 표시용 URL 생성
+                url_map[name] = url
+    # CCEI 입찰공고 7개 지역
+    ccei_regions = [
+        ("gyeonggi", "경기"), ("gyeongnam", "경남"), ("daegu", "대구"),
+        ("busan", "부산"), ("sejong", "세종"), ("incheon", "인천"), ("chungbuk", "충북"),
+    ]
+    for code, rname in ccei_regions:
+        url_map[f"CCEI-{rname}"] = f"https://ccei.creativekorea.or.kr/{code}/allim/allim_list.do?div_code=2"
+    # 특수 스크래퍼
+    url_map["부산창업포탈"] = "https://busanstartup.kr/biz_sup?mcode=biz02"
+    url_map["한국예탁결제원"] = "https://www.ksd.or.kr/ko/about-ksd/ksd-news/bid-notice"
+    return url_map
 
 
 @app.post("/api/sources")
@@ -818,9 +851,19 @@ def collect_by_source(request: Request, source_id: int, mode: str = Query(defaul
     """개별 출처 수집 실행 (관리자). mode: daily=최근2일(빠름), full=전체기간"""
     require_admin(request)
 
-    from collectors.collect_all import collect_by_source as _collect_by_source
-    result = _collect_by_source(source_id, mode=mode)
-    return result
+    source_key = f"source_{source_id}"
+    with _collect_lock:
+        if source_key in _collecting_targets:
+            return JSONResponse(status_code=409, content={"error": "이 출처는 이미 수집 중입니다."})
+        _collecting_targets.add(source_key)
+
+    try:
+        from collectors.collect_all import collect_by_source as _collect_by_source
+        result = _collect_by_source(source_id, mode=mode)
+        return result
+    finally:
+        with _collect_lock:
+            _collecting_targets.discard(source_key)
 
 
 # ─── 출처별 키워드 API ───────────────────────────
@@ -916,17 +959,33 @@ def add_source_keyword(
 
 # ─── 수집 실행 API ────────────────────────────────
 
+import threading
+_collect_lock = threading.Lock()
+_collecting_targets = set()  # 현재 수집 중인 target 추적
+
+
 @app.post("/api/collect")
 def run_collect(request: Request, target: str = Query(default="all")):
     """수집 실행 (관리자 전용). target: all=전체, scrapers=개별기관 스크래퍼만"""
     require_admin(request)
 
-    if target == "scrapers":
-        from collectors.generic_scraper import collect_all_scrapers
-        return collect_all_scrapers(mode="daily")
+    with _collect_lock:
+        if target in _collecting_targets:
+            return JSONResponse(status_code=409, content={"error": "이미 수집이 진행 중입니다. 완료 후 다시 시도해주세요."})
+        _collecting_targets.add(target)
 
-    results = collect_all()
-    return {"results": results}
+    try:
+        if target == "scrapers":
+            from collectors.generic_scraper import collect_all_scrapers
+            from datetime import datetime as _dt
+            batch_time = _dt.now().strftime("%Y-%m-%d %H:%M:%S")
+            return collect_all_scrapers(mode="daily", batch_time=batch_time)
+
+        results = collect_all()
+        return {"results": results}
+    finally:
+        with _collect_lock:
+            _collecting_targets.discard(target)
 
 
 # ─── 프론트엔드 정적파일 ──────────────────────────

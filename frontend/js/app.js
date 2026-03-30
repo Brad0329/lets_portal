@@ -9,7 +9,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkAuth();
     if (!user) return;
 
-    loadSourceFilter();
+    await loadSourceFilter();
+
+    // URL 파라미터로 출처 필터 자동 설정 (?source=기관명)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sourceParam = urlParams.get('source');
+    if (sourceParam) {
+        const select = document.getElementById('filter-source');
+        // 옵션에 없으면 동적 추가 (scraper 출처는 목록에 있을 수 있음)
+        let found = false;
+        for (const opt of select.options) {
+            if (opt.value === sourceParam) { found = true; break; }
+        }
+        if (!found) {
+            const opt = document.createElement('option');
+            opt.value = sourceParam;
+            opt.textContent = sourceParam;
+            select.appendChild(opt);
+        }
+        select.value = sourceParam;
+    }
+
     loadStats();
     loadNotices();
 

@@ -434,7 +434,9 @@
     "title_selector": "td:nth-child(3) a",
     "date_selector": "td:nth-child(4)",
     "link_attr": "href",
-    "link_base": "https://www.konkuk.ac.kr/konkuk/2243/subview.do",
+    "link_base": "https://www.konkuk.ac.kr",
+    "link_js_regex": "jf_artclView\\('(\\w+)',\\s*'(\\w+)',\\s*'(\\d+)'\\)",
+    "link_template": "https://www.konkuk.ac.kr/bid/{1}/{3}/{2}View",
     "encoding": "utf-8",
     "max_pages": 1
   },
@@ -514,7 +516,9 @@
     "title_selector": "td:nth-child(2) a",
     "date_selector": "td:nth-child(5)",
     "link_attr": "href",
-    "link_base": "https://www.koipa.re.kr/home/board/brdList.do?menu_cd=000042",
+    "link_base": "https://www.koipa.re.kr",
+    "link_js_regex": "pageviewform\\('(\\d+)'\\)",
+    "link_template": "https://www.koipa.re.kr/home/board/brdDetail.do?menu_cd=000042&num={id}",
     "encoding": "utf-8",
     "max_pages": 3
   }

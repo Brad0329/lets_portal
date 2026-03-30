@@ -212,9 +212,9 @@ def scrape_busan_startup(days: int = 30) -> list[dict]:
                     "start_date": parsed_date,
                     "end_date": "",
                     "status": "ongoing",
-                    "url": f"https://busanstartup.kr/biz_sup?mcode=biz02&busi_code={busi_code}",
+                    "url": f"https://busanstartup.kr/biz_sup/{busi_code}?mcode=biz02",
                     "keywords": "",
-                    "detail_url": f"https://busanstartup.kr/biz_sup?mcode=biz02&busi_code={busi_code}",
+                    "detail_url": f"https://busanstartup.kr/biz_sup/{busi_code}?mcode=biz02",
                     "apply_url": "",
                     "target": item.get("appl_type", ""),
                     "content": "",
@@ -400,7 +400,12 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
                 if link_js_regex and link_template and link:
                     js_m = re.search(link_js_regex, link)
                     if js_m:
-                        link = link_template.replace("{id}", js_m.group(1))
+                        result_link = link_template
+                        # {id} 호환 (그룹1) + {1},{2},{3}... 다중 그룹 지원
+                        result_link = result_link.replace("{id}", js_m.group(1))
+                        for gi in range(1, len(js_m.groups()) + 1):
+                            result_link = result_link.replace(f"{{{gi}}}", js_m.group(gi))
+                        link = result_link
                 if link and not link.startswith("http") and not link.startswith("javascript:"):
                     link = urljoin(link_base or list_url, link)
 
@@ -519,10 +524,11 @@ def collect_single(source_name: str, config: dict, keywords: list[str], days: in
     }
 
 
-def collect_all_scrapers(mode: str = "daily") -> dict:
+def collect_all_scrapers(mode: str = "daily", batch_time: str | None = None) -> dict:
     """
-    28개 스크래퍼 일괄 실행.
+    48개 스크래퍼 일괄 실행.
     mode: 'daily'=최근 7일, 'full'=최근 30일
+    batch_time: 일괄 수집 시작 시간 (None이면 datetime('now') 사용)
     """
     configs = _load_configs()
     if not configs:
@@ -548,6 +554,10 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
         return {"total": len(configs), "success": 0, "failed": 0, "collected": 0, "matched": 0, "inserted": 0,
                 "results": [], "error": "활성 키워드가 없습니다."}
 
+    # batch_time이 없으면 현재 시간 사용
+    if not batch_time:
+        batch_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     results = []
     success = 0
     failed = 0
@@ -571,8 +581,8 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
-                (r["matched"], name),
+                "UPDATE collect_sources SET last_collected_at=?, last_collected_count=? WHERE name=?",
+                (batch_time, r["matched"], name),
             )
             conn.commit()
             conn.close()
@@ -603,8 +613,8 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
-                (r["matched"], source_name),
+                "UPDATE collect_sources SET last_collected_at=?, last_collected_count=? WHERE name=?",
+                (batch_time, r["matched"], source_name),
             )
             conn.commit()
             conn.close()
@@ -633,8 +643,8 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
-            (r["matched"], source_name),
+            "UPDATE collect_sources SET last_collected_at=?, last_collected_count=? WHERE name=?",
+            (batch_time, r["matched"], source_name),
         )
         conn.commit()
         conn.close()
@@ -662,8 +672,8 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
-            (r["matched"], source_name),
+            "UPDATE collect_sources SET last_collected_at=?, last_collected_count=? WHERE name=?",
+            (batch_time, r["matched"], source_name),
         )
         conn.commit()
         conn.close()
