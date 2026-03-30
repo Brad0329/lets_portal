@@ -418,8 +418,8 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 
 #### 구현 항목
 - [x] 범용 스크래퍼 프레임워크 설계 (설정 기반 HTML 파싱) — `generic_scraper.py`
-- [x] `collect_sources`에 43개 스크래퍼 출처 추가 (HTML 36개 + CCEI 입찰 7개)
-- [x] 36개 사이트 셀렉터 분석 및 `scraper_configs.json` 작성
+- [x] `collect_sources`에 46개 스크래퍼 출처 추가 (HTML 38개 + CCEI 입찰 7개 + 한국예탁결제원 JSON 1개)
+- [x] 38개 사이트 셀렉터 분석 및 `scraper_configs.json` 작성
 - [x] 일괄 수집 API (`POST /api/collect?target=scrapers`) 및 프론트엔드 UI
 - [x] CCEI 입찰공고 스크래퍼 (allimList.json — 7개 지역 JSON API)
 - [x] △ 직접 확인 필요 16개 사이트 재검증 → 3개 정상 추가, 4개 제외, 나머지 보류
@@ -427,7 +427,7 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [x] 제외 사이트 재검증 → 3개 복구 (인천TP, 건국대, 대전기업정보포털), POST 페이지네이션/세션/JS링크 지원 추가
 - [x] 경남TP 신규 URL 확인 → JSON POST API + grid_selector 파싱으로 구현 완료
 - [x] 제주콘텐츠진흥원 URL 변경 → 카드형 레이아웃, skip_no_date 옵션으로 구현 완료
-- [ ] 추가 조치 필요 사이트: 대전정보문화(SSL), 전주정보문화(SSL+URL)
+- [x] 추가 조치 사이트 3개 완료: 대전정보문화(SSL), 전주정보문화(SSL+URL변경), 한국예탁결제원(JSON API)
 - [ ] JS SPA/렌더링 사이트 대응 (한국예탁결제원, 한국지식재산보호원 — headless browser 또는 API 직접 호출)
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)
@@ -437,11 +437,16 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [ ] 체크리스트 기능
 - [ ] 파일 업로드/관리 (직접 업로드)
 
-### Phase C: AI 제안서 생성
-- [ ] Claude API 연동
+### Phase C: AI 연동 (Claude API)
+- [ ] Claude API 연동 (Tool Use 기반)
 - [ ] PDF/DOCX 텍스트 추출
 - [ ] 제안서 초안 생성 기능
 - [ ] DOCX/PDF 출력
+- [ ] AI 스크래핑: 새 사이트/안 되는 사이트 대응 — URL + 프롬프트로 공고 수집 → DB 저장
+  - 기존 43개 스크래퍼는 그대로 유지 (비용 0원, 빠름)
+  - Claude API Tool Use로 fetch_url → HTML 분석 → insert_db 파이프라인
+  - CSS 셀렉터 수동 분석 없이 Claude가 HTML 구조 파악하여 추출
+  - 1회성 분석 또는 구조가 자주 바뀌는 사이트에 활용
 
 ### Phase D: 기관 정보 DB
 - [ ] 기관 상세 정보 테이블 확장

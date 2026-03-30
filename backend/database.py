@@ -219,6 +219,9 @@ def init_db():
         ("대전기업정보포털", "scraper"),
         ("경남테크노파크", "scraper"),
         ("제주콘텐츠진흥원", "scraper"),
+        ("대전정보문화산업진흥원", "scraper"),
+        ("전주정보문화산업진흥원", "scraper"),
+        ("한국예탁결제원", "scraper"),
         # CCEI 입찰공고 7개 지역
         ("CCEI-경기", "scraper"),
         ("CCEI-경남", "scraper"),

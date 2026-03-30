@@ -481,5 +481,29 @@
     "skip_no_date": false,
     "encoding": "utf-8",
     "max_pages": 1
+  },
+  {
+    "name": "대전정보문화산업진흥원",
+    "source_key": "dicia",
+    "list_url": "https://www.dicia.or.kr/sub.do?menuIdx=MENU_000000000000100",
+    "list_selector": "table.board tbody tr",
+    "title_selector": "td.bd-tit a",
+    "date_selector": "td.date",
+    "link_attr": "href",
+    "link_base": "https://www.dicia.or.kr/sub.do?menuIdx=MENU_000000000000100",
+    "encoding": "utf-8",
+    "max_pages": 1
+  },
+  {
+    "name": "전주정보문화산업진흥원",
+    "source_key": "jica",
+    "list_url": "https://www.jica.or.kr/2025/inner.php?sMenu=A4000",
+    "list_selector": "table tbody tr",
+    "title_selector": "td:nth-child(2) a",
+    "date_selector": "td:nth-child(4)",
+    "link_attr": "href",
+    "link_base": "https://www.jica.or.kr/2025/",
+    "encoding": "utf-8",
+    "max_pages": 3
   }
 ]

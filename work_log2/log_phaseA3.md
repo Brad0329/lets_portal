@@ -31,17 +31,17 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
   - `_parse_date(text)` — 다양한 날짜 형식 파싱 (yyyy.MM.dd, yy.MM.dd, yyyyMMdd, 한국어, 기간)
   - `_match_keywords(notices, keywords)` — 제목 기준 키워드 매칭
   - `save_to_db(notices)` — bid_notices UPSERT
-  - `collect_all_scrapers(mode)` — 43개 일괄 실행
+  - `collect_all_scrapers(mode)` — 46개 일괄 실행
 
 ### 2. 스크래퍼 설정 파일 (신규)
 - **파일:** `backend/collectors/scraper_configs.json`
-- 36개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
+- 38개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
 - 사이트 HTML 구조 분석 후 셀렉터 개별 조정 완료
 
 ### 3. DB 변경
 - **파일:** `backend/database.py`
-- `collect_sources` 테이블에 43개 행 추가 (`collector_type="scraper"`)
-  - HTML 스크래핑 36개 + CCEI 입찰공고 7개
+- `collect_sources` 테이블에 46개 행 추가 (`collector_type="scraper"`)
+  - HTML 스크래핑 38개 + CCEI 입찰공고 7개 + 한국예탁결제원 JSON 1개
 - INSERT OR IGNORE로 중복 방지
 
 ### 4. 수집 로직 연동
@@ -92,13 +92,18 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - JSON POST API (`/biz/apply2`) + `#gridData` 부분 HTML 파싱 방식
 - `generic_scraper.py`에 `post_json`, `grid_selector` 기능 추가 → 수집 20건/매칭 19건
 
+### 추가 조치 3개 사이트 복구 (추가 조치 → 구현 완료)
+- **대전정보문화산업진흥원**: SSL verify=False로 접근, board.es 구조 → 수집 1건
+- **전주정보문화산업진흥원**: URL `/2016/` → `/2025/` 변경, SSL verify=False → 수집 1건/매칭 1건
+- **한국예탁결제원**: React SPA → JSON API `/ko/api/content?menuId=KR_ABT_070300` 발견, `scrape_ksd()` 전용 함수 구현 → 수집 3건
+
 ### 제주콘텐츠진흥원 URL 변경 → 구현 완료
 - 기존 URL(공지사항) → 신규 URL `https://ofjeju.kr/bussiness/businessinfo/business.htm` (사업신청)
 - 카드형 레이아웃 (`div.app-list`) — 날짜가 리스트에 없음
 - `skip_no_date: false` 옵션 추가 (오늘 날짜 대체) → 수집 12건/매칭 11건
 
 ## 최종 테스트 결과
-- **43개 사이트 전체 성공 (실패 0)**
+- **46개 사이트 전체 성공 (실패 0)**
 - 소요시간: 약 50~60초
 - 수집 63건 → 키워드 매칭 45건 → DB 저장 45건 (03-30 기준, 신규 3개 제외)
 
@@ -106,11 +111,11 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 
 | 구분 | 개수 | 상태 |
 |------|------|------|
-| HTML 스크래핑 | 36개 | ✅ 구현 완료 |
+| HTML 스크래핑 | 38개 | ✅ 구현 완료 |
 | CCEI 입찰공고 JSON | 7개 | ✅ 구현 완료 |
-| **합계** | **43개** | **일괄 수집 가능** |
+| 한국예탁결제원 JSON | 1개 | ✅ 구현 완료 |
+| **합계** | **46개** | **일괄 수집 가능** |
 | 제외 (입찰 아님) | 1개 | 부산창업포탈 |
-| 추가 조치 필요 | 3개 | 대전정보문화(SSL), 전주정보문화(SSL+URL), 한국예탁결제원(SPA) |
 | URL 변경 필요 | 1개 | 소상공인시장진흥공단(실효성 낮음) |
 | JS 렌더링 보류 | 1개 | 한국지식재산보호원 |
 

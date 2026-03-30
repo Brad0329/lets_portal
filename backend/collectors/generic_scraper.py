@@ -170,6 +170,54 @@ def scrape_ccei_allim(region_code: str, region_name: str, days: int = 30) -> lis
     return notices
 
 
+def scrape_ksd(days: int = 30) -> list[dict]:
+    """한국예탁결제원 입찰공고 수집 (JSON API)."""
+    api_url = "https://www.ksd.or.kr/ko/api/content"
+    cutoff = datetime.now() - timedelta(days=days)
+    notices = []
+
+    try:
+        resp = requests.get(api_url, params={"menuId": "KR_ABT_070300"}, headers=DEFAULT_HEADERS, timeout=15)
+        if resp.status_code != 200:
+            return notices
+        items = resp.json().get("body", {}).get("list", [])
+
+        for item in items:
+            ntt_id = str(item.get("nttId", ""))
+            title = item.get("bbsSj", "").strip()
+            raw_date = item.get("frstRegistPnttm", "")[:8]
+            if not ntt_id or not title or len(raw_date) != 8:
+                continue
+
+            parsed_date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+            try:
+                if datetime.strptime(parsed_date, "%Y-%m-%d") < cutoff:
+                    continue
+            except ValueError:
+                continue
+
+            notices.append({
+                "source": "한국예탁결제원",
+                "title": title,
+                "organization": "한국예탁결제원",
+                "category": "입찰공고",
+                "bid_no": f"KSD-{ntt_id}",
+                "start_date": parsed_date,
+                "end_date": "",
+                "status": "ongoing",
+                "url": f"https://www.ksd.or.kr/ko/about-ksd/ksd-news/bid-notice?nttId={ntt_id}",
+                "keywords": "",
+                "detail_url": f"https://www.ksd.or.kr/ko/about-ksd/ksd-news/bid-notice?nttId={ntt_id}",
+                "apply_url": "",
+                "target": "",
+                "content": "",
+            })
+    except Exception as e:
+        logger.warning(f"  한국예탁결제원 요청 실패: {e}")
+
+    return notices
+
+
 # CCEI 입찰공고 7개 지역 설정
 CCEI_ALLIM_REGIONS = [
     ("gyeonggi", "경기"),
@@ -510,7 +558,36 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
             results.append({"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
             failed += 1
 
-    total_sites = len(configs) + len(CCEI_ALLIM_REGIONS)
+    # 한국예탁결제원 JSON API 수집
+    try:
+        source_name = "한국예탁결제원"
+        logger.info(f"  스크래핑: {source_name}")
+        notices = scrape_ksd(days=days)
+        matched = _match_keywords(notices, keywords)
+        inserted, updated = save_to_db(matched)
+
+        r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+        results.append(r)
+        success += 1
+        total_collected += r["collected"]
+        total_matched += r["matched"]
+        total_inserted += r["inserted"]
+        logger.info(f"  ✅ {source_name}: 수집 {r['collected']}건, 매칭 {r['matched']}건, 신규 {r['inserted']}건")
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
+            (r["matched"], source_name),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"  ❌ 한국예탁결제원 수집 실패: {e}")
+        results.append({"source": "한국예탁결제원", "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
+        failed += 1
+
+    total_sites = len(configs) + len(CCEI_ALLIM_REGIONS) + 1  # +1 한국예탁결제원
     return {
         "total": total_sites,
         "success": success,
