@@ -21,6 +21,7 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - JSON 설정(CSS 셀렉터, URL 패턴)으로 다양한 사이트 대응
 - offset 기반 페이지네이션 지원 (`offset_size` 설정)
 - POST 페이지네이션 지원 (`post_data`, `page_param_key` 설정)
+- JSON POST 지원 (`post_json` 설정) + 부분 HTML 파싱 (`grid_selector` 설정)
 - 세션 쿠키 초기화 지원 (`session_init_url` 설정)
 - JS 링크 변환 지원 (`link_js_regex`, `link_template` 설정)
 - 사이트별 parser 선택 지원 (html.parser/lxml)
@@ -30,17 +31,17 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
   - `_parse_date(text)` — 다양한 날짜 형식 파싱 (yyyy.MM.dd, yy.MM.dd, yyyyMMdd, 한국어, 기간)
   - `_match_keywords(notices, keywords)` — 제목 기준 키워드 매칭
   - `save_to_db(notices)` — bid_notices UPSERT
-  - `collect_all_scrapers(mode)` — 41개 일괄 실행
+  - `collect_all_scrapers(mode)` — 42개 일괄 실행
 
 ### 2. 스크래퍼 설정 파일 (신규)
 - **파일:** `backend/collectors/scraper_configs.json`
-- 34개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
+- 35개 기관별 설정: list_url, CSS 셀렉터, 페이지네이션, 인코딩 등
 - 사이트 HTML 구조 분석 후 셀렉터 개별 조정 완료
 
 ### 3. DB 변경
 - **파일:** `backend/database.py`
-- `collect_sources` 테이블에 41개 행 추가 (`collector_type="scraper"`)
-  - HTML 스크래핑 34개 + CCEI 입찰공고 7개
+- `collect_sources` 테이블에 42개 행 추가 (`collector_type="scraper"`)
+  - HTML 스크래핑 35개 + CCEI 입찰공고 7개
 - INSERT OR IGNORE로 중복 방지
 
 ### 4. 수집 로직 연동
@@ -86,8 +87,13 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - **대전기업정보포털**: 지원사업 공고이지만 사실상 입찰공고 성격, GET 페이지네이션 → 수집 30건/매칭 29건
 - `generic_scraper.py`에 POST 페이지네이션, 세션 초기화, JS 링크 변환 기능 추가
 
+### 경남테크노파크 복구 (추가 조치 → 구현 완료)
+- 기존 URL(more.co.kr) 서버 다운 → 신규 URL `https://www.gntp.or.kr/biz/apply` 확인
+- JSON POST API (`/biz/apply2`) + `#gridData` 부분 HTML 파싱 방식
+- `generic_scraper.py`에 `post_json`, `grid_selector` 기능 추가 → 수집 20건/매칭 19건
+
 ## 최종 테스트 결과
-- **41개 사이트 전체 성공 (실패 0)**
+- **42개 사이트 전체 성공 (실패 0)**
 - 소요시간: 약 50~60초
 - 수집 63건 → 키워드 매칭 45건 → DB 저장 45건 (03-30 기준, 신규 3개 제외)
 
@@ -95,11 +101,11 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 
 | 구분 | 개수 | 상태 |
 |------|------|------|
-| HTML 스크래핑 | 34개 | ✅ 구현 완료 |
+| HTML 스크래핑 | 35개 | ✅ 구현 완료 |
 | CCEI 입찰공고 JSON | 7개 | ✅ 구현 완료 |
-| **합계** | **41개** | **일괄 수집 가능** |
+| **합계** | **42개** | **일괄 수집 가능** |
 | 제외 (입찰 아님) | 1개 | 부산창업포탈 |
-| 추가 조치 필요 | 4개 | 경남TP(URL변경), 대전정보문화(SSL), 전주정보문화(SSL+URL), 한국예탁결제원(SPA) |
+| 추가 조치 필요 | 3개 | 대전정보문화(SSL), 전주정보문화(SSL+URL), 한국예탁결제원(SPA) |
 | URL 변경 필요 | 2개 | 제주콘텐츠진흥원, 소상공인시장진흥공단(실효성 낮음) |
 | JS 렌더링 보류 | 1개 | 한국지식재산보호원 |
 

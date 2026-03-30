@@ -450,5 +450,23 @@
     "pagination": "&nPage={page}",
     "encoding": "utf-8",
     "max_pages": 3
+  },
+  {
+    "name": "경남테크노파크",
+    "source_key": "gntp",
+    "list_url": "https://www.gntp.or.kr/biz/apply2",
+    "list_selector": "tr",
+    "title_selector": "td:nth-child(5) a",
+    "date_selector": "td:nth-child(6)",
+    "link_attr": "onclick",
+    "link_base": "https://www.gntp.or.kr",
+    "link_js_regex": "(/biz/applyInfo/\\d+)",
+    "link_template": "https://www.gntp.or.kr{id}",
+    "grid_selector": "#gridData",
+    "post_data": {},
+    "post_json": true,
+    "page_param_key": "pageIndex",
+    "encoding": "utf-8",
+    "max_pages": 3
   }
 ]

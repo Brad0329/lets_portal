@@ -204,8 +204,11 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
     pagination = config.get("pagination", "")  # e.g. "&page={page}" or "?page={page}"
 
     # POST 페이지네이션 지원
-    post_data = config.get("post_data")  # POST 요청 시 전송할 form data
+    post_data = config.get("post_data")  # POST 요청 시 전송할 form data (dict 또는 None)
+    use_post = post_data is not None  # 빈 dict {}도 POST로 처리
+    post_json = config.get("post_json", False)  # True이면 JSON body로 전송
     page_param_key = config.get("page_param_key", "")  # POST data 내 페이지 번호 키
+    grid_selector = config.get("grid_selector", "")  # 응답 HTML 내 데이터 영역 셀렉터
 
     # 세션 초기화 URL (쿠키 획득용)
     session_init_url = config.get("session_init_url", "")
@@ -231,24 +234,27 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
 
     for page in range(1, max_pages + 1):
         # URL 구성
-        if page == 1 and not post_data:
+        if use_post:
             url = list_url
-        elif pagination and not post_data:
+        elif page == 1:
+            url = list_url
+        elif pagination:
             page_val = str(page)
             if offset_size:
                 page_val = str((page - 1) * offset_size)
             url = list_url + pagination.replace("{page}", page_val).replace("{offset}", page_val)
-        elif post_data:
-            url = list_url
         else:
             break  # 페이지네이션 없으면 1페이지만
 
         try:
-            if post_data:
+            if use_post:
                 form = dict(post_data)
                 if page_param_key:
-                    form[page_param_key] = str(page)
-                resp = session.post(url, headers=DEFAULT_HEADERS, data=form, timeout=15, verify=False)
+                    form[page_param_key] = page
+                if post_json:
+                    resp = session.post(url, headers={**DEFAULT_HEADERS, "Content-Type": "application/json;charset=UTF-8"}, json=form, timeout=15, verify=False)
+                else:
+                    resp = session.post(url, headers=DEFAULT_HEADERS, data=form, timeout=15, verify=False)
             else:
                 resp = session.get(url, headers=DEFAULT_HEADERS, timeout=15, verify=False)
             if encoding.lower() != "utf-8":
@@ -262,6 +268,10 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
 
             parser = config.get("parser", "html.parser")
             soup = BeautifulSoup(resp.text, parser)
+            if grid_selector:
+                grid = soup.select_one(grid_selector)
+                if grid:
+                    soup = grid
             rows = soup.select(list_sel)
 
             if not rows:
