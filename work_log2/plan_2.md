@@ -417,12 +417,15 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - 옵션: 키워드 필터 ON/OFF 설정 (출처별)
 
 #### 구현 항목
-- [ ] 범용 스크래퍼 프레임워크 설계 (설정 기반 HTML 파싱)
-- [ ] `collect_sources`에 scraper_config 지원 추가
-- [ ] CCEI 입찰공고 스크래퍼 (allim_list.do — 7개 센터)
-- [ ] PHP 게시판 공통 스크래퍼 (board.php 패턴 — 5~6개 사이트)
-- [ ] board.es 공통 스크래퍼 (4~5개 사이트)
-- [ ] 기타 개별 사이트 스크래퍼 순차 구현
+- [x] 범용 스크래퍼 프레임워크 설계 (설정 기반 HTML 파싱) — `generic_scraper.py`
+- [x] `collect_sources`에 38개 스크래퍼 출처 추가 (HTML 31개 + CCEI 입찰 7개)
+- [x] 31개 사이트 셀렉터 분석 및 `scraper_configs.json` 작성
+- [x] 일괄 수집 API (`POST /api/collect?target=scrapers`) 및 프론트엔드 UI
+- [x] CCEI 입찰공고 스크래퍼 (allimList.json — 7개 지역 JSON API)
+- [x] △ 직접 확인 필요 16개 사이트 재검증 → 3개 정상 추가, 4개 제외, 나머지 보류
+- [x] 날짜 파싱 개선 — 5가지 형식 지원, 파싱 성공률 21%→64%, 날짜 없는 공지글 스킵
+- [ ] 추가 조치 필요 사이트: 경남TP(URL변경), 대전정보문화(SSL), 전주정보문화(SSL+URL), 제주콘텐츠(URL변경)
+- [ ] JS SPA/렌더링 사이트 대응 (한국예탁결제원, 한국지식재산보호원 — headless browser 또는 API 직접 호출)
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)
 
