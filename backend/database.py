@@ -214,6 +214,14 @@ def init_db():
         ("경기대진테크노파크", "scraper"),
         ("세종테크노파크", "scraper"),
         ("한국발명진흥회", "scraper"),
+        # CCEI 입찰공고 7개 지역
+        ("CCEI-경기", "scraper"),
+        ("CCEI-경남", "scraper"),
+        ("CCEI-대구", "scraper"),
+        ("CCEI-부산", "scraper"),
+        ("CCEI-세종", "scraper"),
+        ("CCEI-인천", "scraper"),
+        ("CCEI-충북", "scraper"),
     ]
     for name, ctype in initial_sources:
         cursor.execute(

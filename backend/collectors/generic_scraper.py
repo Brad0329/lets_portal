@@ -101,6 +101,87 @@ def _match_keywords(notices: list[dict], keywords: list[str]) -> list[dict]:
     return matched
 
 
+def scrape_ccei_allim(region_code: str, region_name: str, days: int = 30) -> list[dict]:
+    """
+    CCEI 지역센터 입찰공고 수집 (JSON API).
+    POST https://ccei.creativekorea.or.kr/{region}/allim/allimList.json
+    """
+    api_url = f"https://ccei.creativekorea.or.kr/{region_code}/allim/allimList.json"
+    cutoff = datetime.now() - timedelta(days=days)
+    notices = []
+    seen = set()
+
+    for page in range(1, 4):  # max 3 pages
+        try:
+            resp = requests.post(api_url, data={"div_code": "2", "pn": str(page)}, timeout=15)
+            if resp.status_code != 200:
+                break
+            data = resp.json()
+            items = data.get("result", {}).get("list", [])
+            if not items:
+                break
+
+            for item in items:
+                seq = str(item.get("SEQ", ""))
+                title = item.get("TITLE", "").strip()
+                reg_date = item.get("REG_DATE", "")
+                if not seq or not title:
+                    continue
+
+                parsed_date = _parse_date(reg_date)
+                if not parsed_date:
+                    continue
+
+                try:
+                    dt = datetime.strptime(parsed_date, "%Y-%m-%d")
+                    if dt < cutoff:
+                        continue
+                except ValueError:
+                    pass
+
+                if seq in seen:
+                    continue
+                seen.add(seq)
+
+                source_name = f"CCEI-{region_name}"
+                detail_url = f"https://ccei.creativekorea.or.kr/{region_code}/allim/allim_view.do?no={seq}&div_code=2"
+
+                notices.append({
+                    "source": source_name,
+                    "title": title,
+                    "organization": source_name,
+                    "category": "입찰공고",
+                    "bid_no": f"CCEI-ALLIM-{seq}",
+                    "start_date": parsed_date,
+                    "end_date": "",
+                    "status": "ongoing",
+                    "url": detail_url,
+                    "keywords": "",
+                    "detail_url": detail_url,
+                    "apply_url": "",
+                    "target": "",
+                    "content": "",
+                })
+
+        except Exception as e:
+            logger.warning(f"  CCEI {region_name} 페이지 {page} 요청 실패: {e}")
+            break
+
+    return notices
+
+
+# CCEI 입찰공고 7개 지역 설정
+CCEI_ALLIM_REGIONS = [
+    ("gyeonggi", "경기"),
+    ("gyeongnam", "경남"),
+    ("daegu", "대구"),
+    ("busan", "부산"),
+    ("sejong", "세종"),
+    ("incheon", "인천"),
+    ("chungbuk", "충북"),
+]
+
+
 def scrape_site(config: dict, days: int = 30) -> list[dict]:
     """
     설정 기반으로 단일 사이트 스크래핑.
@@ -351,8 +432,41 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
             results.append({"source": name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
             failed += 1
 
+    # CCEI 입찰공고 7개 지역 수집
+    for region_code, region_name in CCEI_ALLIM_REGIONS:
+        source_name = f"CCEI-{region_name}"
+        try:
+            logger.info(f"  스크래핑: {source_name}")
+            notices = scrape_ccei_allim(region_code, region_name, days=days)
+            matched = _match_keywords(notices, keywords)
+            inserted, updated = save_to_db(matched)
+
+            r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+            results.append(r)
+            success += 1
+            total_collected += r["collected"]
+            total_matched += r["matched"]
+            total_inserted += r["inserted"]
+            logger.info(f"  ✅ {source_name}: 수집 {r['collected']}건, 매칭 {r['matched']}건, 신규 {r['inserted']}건")
+
+            # collect_sources 갱신
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
+                (r["matched"], source_name),
+            )
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            logger.error(f"  ❌ {source_name} 수집 실패: {e}")
+            results.append({"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
+            failed += 1
+
+    total_sites = len(configs) + len(CCEI_ALLIM_REGIONS)
     return {
-        "total": len(configs),
+        "total": total_sites,
         "success": success,
         "failed": failed,
         "collected": total_collected,
