@@ -10,7 +10,7 @@
     <style>
         header { display: none; }
 
-        .source-page { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .source-page { max-width: 900px; padding: 20px; }
         .source-page h1 { font-size: 1.4rem; margin-bottom: 20px; }
 
         /* 공통 키워드 영역 */
@@ -75,6 +75,19 @@
         }
         .btn-collect-full:hover { background: #5f6b6c; }
         .btn-collect:disabled { background: #aaa; cursor: not-allowed; }
+        .date-range-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .date-input {
+            padding: 5px 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            width: 130px;
+        }
+        .date-sep { color: #888; font-size: 0.85rem; }
         .btn-collect.collecting { background: #f39c12; }
         .collect-result {
             font-size: 0.82rem;
@@ -262,6 +275,24 @@
             cursor: pointer;
         }
         .scraper-item-cnt:hover { text-decoration: underline; color: #1a5276; }
+        .scraper-item-failed { border-color: #e74c3c; background: #fdf2f2; }
+        .scraper-fail {
+            color: #e74c3c;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        .scraper-retry-btn {
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+        .scraper-retry-btn:hover { background: #c0392b; }
+        .scraper-retry-btn:disabled { background: #f39c12; cursor: wait; }
         .scraper-timer {
             display: none;
             font-size: 0.85rem;
@@ -288,6 +319,11 @@
                     <span class="scraper-count" id="scraper-count"></span>
                 </div>
                 <div class="scraper-actions">
+                    <div class="date-range-group">
+                        <input type="date" id="scraper-start-date" class="date-input" />
+                        <span class="date-sep">~</span>
+                        <input type="date" id="scraper-end-date" class="date-input" />
+                    </div>
                     <button class="btn-collect btn-scraper-collect" id="btn-scraper-collect" onclick="collectAllScrapers()">일괄 수집</button>
                     <div class="progress-wrap" id="scraper-progress-wrap">
                         <div class="progress-bar" id="scraper-progress-bar"></div>

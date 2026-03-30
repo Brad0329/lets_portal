@@ -287,9 +287,9 @@ def save_to_db(notices: list[dict]):
     return inserted, updated
 
 
-def collect_and_save(keywords=None, mode="daily"):
+def collect_and_save(keywords=None, days: int = 1, mode="daily"):
     """키워드 목록 로드 → 수집 → 저장
-    mode: 'daily'=최근 2일(빠름), 'full'=설정된 전체기간
+    days: 수집할 기간(일수). 직접 지정 시 mode 무시.
     """
     conn = get_connection()
     cursor = conn.cursor()
@@ -297,13 +297,6 @@ def collect_and_save(keywords=None, mode="daily"):
     if keywords is None:
         cursor.execute("SELECT keyword FROM keywords WHERE is_active=1")
         keywords = [row[0] for row in cursor.fetchall()]
-
-    if mode == "full":
-        cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
-        row = cursor.fetchone()
-        days = int(row[0]) if row else 30
-    else:
-        days = 2  # daily 모드: 최근 2일만
 
     conn.close()
 

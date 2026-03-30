@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkAuth();
     if (!user) return;
     await loadAll();
+    // 스크래퍼 날짜 기본값: 오늘
+    const today = new Date().toISOString().slice(0, 10);
+    const sdEl = document.getElementById('scraper-start-date');
+    const edEl = document.getElementById('scraper-end-date');
+    if (sdEl) sdEl.value = today;
+    if (edEl) edEl.value = today;
 });
 
 async function loadAll() {
@@ -58,6 +64,8 @@ function renderSources() {
         const resultColor = cr ? `color:${cr.color}` : '';
         const kws = sourceKeywords[s.id] || [];
 
+        const today = new Date().toISOString().slice(0, 10);
+
         return `
         <div class="source-card${inactive}" id="source-card-${s.id}">
             <div class="source-header">
@@ -65,15 +73,13 @@ function renderSources() {
                 <span class="source-meta">마지막 수집: ${lastAt}</span>
             </div>
             <div class="source-stats">
-                ${s.collector_type === 'nara' ? `
-                <button class="btn-collect" id="btn-collect-${s.id}" onclick="collectSource(${s.id}, 'daily')"
-                    ${s.is_active ? '' : 'disabled'}>빠른수집</button>
-                <button class="btn-collect btn-collect-full" id="btn-full-${s.id}" onclick="collectSource(${s.id}, 'full')"
-                    ${s.is_active ? '' : 'disabled'}>전체수집</button>
-                ` : `
-                <button class="btn-collect" id="btn-collect-${s.id}" onclick="collectSource(${s.id}, 'full')"
+                <div class="date-range-group">
+                    <input type="date" id="start-date-${s.id}" value="${today}" class="date-input" />
+                    <span class="date-sep">~</span>
+                    <input type="date" id="end-date-${s.id}" value="${today}" class="date-input" />
+                </div>
+                <button class="btn-collect" id="btn-collect-${s.id}" onclick="collectSource(${s.id})"
                     ${s.is_active ? '' : 'disabled'}>수집</button>
-                `}
                 <div class="progress-wrap" id="progress-wrap-${s.id}">
                     <div class="progress-bar" id="progress-bar-${s.id}"></div>
                 </div>
@@ -177,42 +183,41 @@ async function deleteKeyword(kwId, kwName) {
 // 수집 완료 후 결과 메시지를 보존하기 위한 임시 저장
 let collectResults = {}; // { sourceId: { text, color } }
 
-async function collectSource(sourceId, mode = 'daily') {
+async function collectSource(sourceId) {
     const btn = document.getElementById(`btn-collect-${sourceId}`);
-    const btnFull = document.getElementById(`btn-full-${sourceId}`);
     const resultEl = document.getElementById(`result-${sourceId}`);
     const progressWrap = document.getElementById(`progress-wrap-${sourceId}`);
     const progressBar = document.getElementById(`progress-bar-${sourceId}`);
+    const startDate = document.getElementById(`start-date-${sourceId}`).value;
+    const endDate = document.getElementById(`end-date-${sourceId}`).value;
 
     btn.disabled = true;
-    if (btnFull) btnFull.disabled = true;
-    const activeBtn = (mode === 'full' && btnFull) ? btnFull : btn;
-    activeBtn.textContent = '수집중...';
-    activeBtn.classList.add('collecting');
+    btn.textContent = '수집중...';
+    btn.classList.add('collecting');
     resultEl.textContent = '';
 
-    // 진행바 표시 (indeterminate 애니메이션)
     progressWrap.classList.add('active');
     progressBar.classList.add('indeterminate');
 
     try {
-        const resp = await fetch(`/api/sources/${sourceId}/collect?mode=${mode}`, { method: 'POST' });
+        const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+        const resp = await fetch(`/api/sources/${sourceId}/collect?${params}`, { method: 'POST' });
         const data = await resp.json();
 
-        // 진행바 완료 표시
         progressBar.classList.remove('indeterminate');
         progressBar.style.width = '100%';
 
-        if (data.error) {
+        if (resp.status === 409) {
+            collectResults[sourceId] = { text: data.error || '이미 수집 중입니다.', color: '#e67e22' };
+        } else if (data.error) {
             collectResults[sourceId] = { text: `오류: ${data.error}`, color: '#e74c3c' };
         } else {
             collectResults[sourceId] = {
-                text: `수집 ${data.collected}건 (신규 ${data.inserted}, 업데이트 ${data.updated})`,
+                text: `${startDate}~${endDate} 수집 ${data.collected}건 (신규 ${data.inserted}, 업데이트 ${data.updated})`,
                 color: '#27ae60'
             };
         }
 
-        // 잠시 100% 상태 보여주고 출처 목록 새로고침
         await new Promise(r => setTimeout(r, 600));
         await loadSources();
         renderSources();
@@ -224,6 +229,8 @@ async function collectSource(sourceId, mode = 'daily') {
 }
 
 // ─── 스크래퍼 섹션 ──────────────────────────────
+
+let scraperFailedMap = {}; // { source_name: error_message }
 
 function renderScraperSection() {
     const scrapers = allSources.filter(s => s.collector_type === 'scraper');
@@ -255,12 +262,17 @@ function renderScraperSection() {
         const cntLink = cnt > 0
             ? `<a class="scraper-item-cnt" href="/index.html?source=${encodeURIComponent(s.name)}" title="이 기관의 공고 보기">${cntDisplay}</a>`
             : `<span>${cntDisplay}</span>`;
-        return `<div class="scraper-item">
+        // 실패 상태 표시
+        const failErr = scraperFailedMap[s.name];
+        const failHtml = failErr
+            ? `<span class="scraper-fail">수집실패</span> <button class="scraper-retry-btn" onclick="retryScraper('${escapeHtml(s.name)}', this)" title="${escapeHtml(failErr)}">재시도</button>`
+            : '';
+        return `<div class="scraper-item ${failErr ? 'scraper-item-failed' : ''}">
             <div class="scraper-item-left">
                 <span class="scraper-item-name">${escapeHtml(s.name)}</span>
                 ${siteUrl ? `<a class="scraper-item-url" href="${escapeHtml(siteUrl)}" target="_blank" title="${escapeHtml(siteUrl)}">${escapeHtml(domainDisplay)}</a>` : ''}
             </div>
-            <span class="scraper-item-meta">${lastAt} / ${cntLink}</span>
+            <span class="scraper-item-meta">${failHtml || (lastAt + ' / ' + cntLink)}</span>
         </div>`;
     }).join('');
 }
@@ -285,6 +297,8 @@ async function collectAllScrapers() {
     const progressWrap = document.getElementById('scraper-progress-wrap');
     const progressBar = document.getElementById('scraper-progress-bar');
     const timerEl = document.getElementById('scraper-timer');
+    const startDate = document.getElementById('scraper-start-date').value;
+    const endDate = document.getElementById('scraper-end-date').value;
 
     btn.disabled = true;
     btn.textContent = '수집중...';
@@ -313,7 +327,8 @@ async function collectAllScrapers() {
     }
 
     try {
-        const resp = await fetch('/api/collect?target=scrapers', { method: 'POST' });
+        const params = new URLSearchParams({ target: 'scrapers', start_date: startDate, end_date: endDate });
+        const resp = await fetch(`/api/collect?${params}`, { method: 'POST' });
         const data = await resp.json();
 
         // 중복 실행 감지 (409)
@@ -337,6 +352,14 @@ async function collectAllScrapers() {
 
         progressBar.classList.remove('indeterminate');
         progressBar.style.width = '100%';
+
+        // 실패 기관 맵 갱신
+        scraperFailedMap = {};
+        if (data.results) {
+            data.results.forEach(r => {
+                if (r.error) scraperFailedMap[r.source] = r.error;
+            });
+        }
 
         if (data.error) {
             resultEl.style.color = '#e74c3c';
@@ -370,6 +393,43 @@ async function collectAllScrapers() {
             progressWrap.classList.remove('active');
             progressBar.style.width = '0%';
         }, 2000);
+    }
+}
+
+// ─── 개별 스크래퍼 재시도 ──────────────────────────
+
+async function retryScraper(sourceName, btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '수집중...';
+
+    const startDate = document.getElementById('scraper-start-date').value;
+    const endDate = document.getElementById('scraper-end-date').value;
+    const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+
+    try {
+        const resp = await fetch(`/api/scraper/${encodeURIComponent(sourceName)}/collect?${params}`, { method: 'POST' });
+        const data = await resp.json();
+
+        if (data.error) {
+            btnEl.textContent = '재시도';
+            btnEl.disabled = false;
+            alert(`${sourceName} 재수집 실패: ${data.error}`);
+        } else {
+            // 성공 → 실패 맵에서 제거 후 목록 갱신
+            delete scraperFailedMap[sourceName];
+            await loadSources();
+            renderSources();
+            renderScraperSection();
+            // 기관 목록 펼친 상태 유지
+            const list = document.getElementById('scraper-list');
+            const icon = document.getElementById('scraper-toggle-icon');
+            list.style.display = 'grid';
+            icon.innerHTML = '&#9660;';
+        }
+    } catch (e) {
+        btnEl.textContent = '재시도';
+        btnEl.disabled = false;
+        alert(`${sourceName} 재수집 실패: ${e.message}`);
     }
 }
 

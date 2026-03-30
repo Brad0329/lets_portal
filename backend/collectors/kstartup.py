@@ -187,25 +187,16 @@ def save_to_db(notices: list[dict]):
     return inserted, updated
 
 
-def collect_and_save(keywords=None, mode="daily"):
-    """키워드 목록 로드 → 수집 → 저장 (메인 실행 함수)
-    mode: 'daily'=최근 2일(빠름), 'full'=설정된 전체기간
+def collect_and_save(keywords=None, days: int = 1, mode="daily"):
+    """키워드 목록 로드 → 수집 → 저장
+    days: 수집할 기간(일수).
     """
     conn = get_connection()
     cursor = conn.cursor()
 
     if keywords is None:
-        # 활성 키워드 로드 (하위호환)
         cursor.execute("SELECT keyword FROM keywords WHERE is_active=1")
         keywords = [row[0] for row in cursor.fetchall()]
-
-    # 설정 로드
-    if mode == "full":
-        cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
-        row = cursor.fetchone()
-        days = int(row[0]) if row else 30
-    else:
-        days = 2  # daily 모드
 
     cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='status_filter'")
     row = cursor.fetchone()
@@ -213,7 +204,7 @@ def collect_and_save(keywords=None, mode="daily"):
 
     conn.close()
 
-    logger.info(f"K-Startup 수집 시작 (mode={mode}): 키워드 {len(keywords)}개, 기간 {days}일, 진행중만={only_ongoing}")
+    logger.info(f"K-Startup 수집 시작: 키워드 {len(keywords)}개, 기간 {days}일, 진행중만={only_ongoing}")
     notices = fetch_announcements(keywords, days=days, only_ongoing=only_ongoing)
     inserted, updated = save_to_db(notices)
     return {"source": "K-Startup", "collected": len(notices), "inserted": inserted, "updated": updated}

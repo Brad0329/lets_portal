@@ -209,9 +209,9 @@ def save_to_db(notices: list[dict]):
     return inserted, updated
 
 
-def collect_and_save(keywords=None, mode="daily"):
-    """키워드 목록 로드 → 수집 → 저장 (메인 실행 함수)
-    mode: 'daily'/'full' — CCEI는 sPtime=now로 현재 프로그램만 가져오므로 차이 없음
+def collect_and_save(keywords=None, days: int = 1, mode="daily"):
+    """키워드 목록 로드 → 수집 → 저장
+    days: 수집할 기간(일수). CCEI는 sPtime=now로 현재 프로그램만 가져옴.
     """
     conn = get_connection()
     cursor = conn.cursor()
@@ -219,11 +219,6 @@ def collect_and_save(keywords=None, mode="daily"):
     if keywords is None:
         cursor.execute("SELECT keyword FROM keywords WHERE is_active=1")
         keywords = [row[0] for row in cursor.fetchall()]
-
-    # 설정 로드
-    cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
-    row = cursor.fetchone()
-    days = int(row[0]) if row else 30
 
     cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='status_filter'")
     row = cursor.fetchone()

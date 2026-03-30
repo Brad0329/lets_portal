@@ -22,9 +22,8 @@
     <main>
         <h2 style="font-size:1.3rem;font-weight:600;color:#1a5276;margin-bottom:16px;">검토요청 공고</h2>
 
-        <!-- 검색/필터 -->
+        <!-- 필터 -->
         <div class="search-bar">
-            <input type="text" id="search-input" placeholder="공고명, 기관명, 키워드 검색..." />
             <select id="filter-source">
                 <option value="">전체 출처</option>
                 <option value="K-Startup">K-Startup</option>
@@ -36,7 +35,6 @@
                 <option value="deadline">마감임박순</option>
                 <option value="latest">입찰공고일 최신순</option>
             </select>
-            <button class="btn" onclick="loadReviewNotices()">검색</button>
         </div>
 
         <!-- 공고 목록 -->
@@ -71,9 +69,6 @@
             if (!user) return;
             loadReviewNotices();
 
-            document.getElementById('search-input').addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') loadReviewNotices();
-            });
             ['filter-source', 'filter-sort'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     reviewPage = 1;
@@ -83,7 +78,7 @@
         });
 
         async function loadReviewNotices() {
-            const q = document.getElementById('search-input').value;
+            const q = '';
             const source = document.getElementById('filter-source').value;
             const sort = document.getElementById('filter-sort').value;
 

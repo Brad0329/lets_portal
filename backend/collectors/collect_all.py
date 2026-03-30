@@ -47,8 +47,8 @@ def _load_keywords_for_source(source_id: int) -> list[str]:
     return keywords
 
 
-def collect_by_source(source_id: int, mode: str = "daily") -> dict:
-    """개별 출처 수집 실행. mode: 'daily'=최근 2일(빠름), 'full'=전체기간"""
+def collect_by_source(source_id: int, days: int = 1, mode: str = "daily") -> dict:
+    """개별 출처 수집 실행. days: 수집할 기간(일수). mode는 하위 호환용."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM collect_sources WHERE id=?", (source_id,))
@@ -73,7 +73,7 @@ def collect_by_source(source_id: int, mode: str = "daily") -> dict:
         return {"source": source["name"], "collected": 0, "inserted": 0, "updated": 0, "error": "활성 키워드가 없습니다."}
 
     try:
-        result = collector_fn(keywords=keywords, mode=mode)
+        result = collector_fn(keywords=keywords, days=days)
         # 수집 상태 갱신
         conn = get_connection()
         cursor = conn.cursor()

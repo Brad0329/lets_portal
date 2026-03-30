@@ -1,21 +1,29 @@
-/* 네비게이션 바 */
+/* 세로 사이드바 네비게이션 */
 #main-navbar {
-    background: linear-gradient(135deg, #1a5276, #2980b9);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    width: 200px;
+    height: 100vh;
+    background: linear-gradient(180deg, #1a5276, #2980b9);
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15);
     z-index: 100;
+    overflow-y: auto;
 }
-.navbar-inner {
-    max-width: 1280px;
-    margin: 0 auto;
+
+.sidebar-inner {
     display: flex;
-    align-items: center;
-    padding: 0 20px;
-    height: 56px;
-    gap: 24px;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
 }
-.navbar-brand .brand-link {
+
+/* 로고 */
+.sidebar-brand {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.sidebar-brand .brand-link {
     display: flex;
     align-items: center;
     text-decoration: none;
@@ -24,39 +32,67 @@
     height: 28px;
     width: auto;
 }
-.navbar-menu {
-    display: flex;
-    gap: 4px;
+
+/* 메뉴 영역 */
+.sidebar-menu {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 8px;
+    gap: 2px;
 }
+
+/* 메뉴 링크 */
 .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: rgba(255,255,255,0.8);
     text-decoration: none;
-    padding: 8px 14px;
+    padding: 10px 12px;
     border-radius: 6px;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     transition: all 0.15s;
     white-space: nowrap;
 }
-.nav-link:hover { background: rgba(255,255,255,0.12); color: white; }
-.nav-link.active { background: rgba(255,255,255,0.2); color: white; font-weight: 600; }
+.nav-link:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+.nav-link.active {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: 600;
+}
 
-.navbar-user {
+/* 하단 영역 (공고수집 출처 + 사용자 정보) */
+.sidebar-bottom {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 8px 12px;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* 사용자 정보 */
+.sidebar-user {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 4px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 .user-info {
     color: rgba(255,255,255,0.9);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
 }
 .user-role {
     display: inline-block;
     padding: 1px 6px;
     background: rgba(255,255,255,0.2);
     border-radius: 10px;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     margin-left: 4px;
 }
 .btn-logout {
@@ -66,14 +102,34 @@
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     transition: all 0.15s;
+    width: 100%;
 }
-.btn-logout:hover { background: rgba(255,255,255,0.25); color: white; }
+.btn-logout:hover {
+    background: rgba(255,255,255,0.25);
+    color: white;
+}
 
-/* 반응형 */
+/* 본문 영역 밀기 */
+body.has-sidebar > main {
+    margin-left: 200px;
+}
+
+/* 반응형: 모바일에서 사이드바 축소 */
 @media (max-width: 768px) {
-    .navbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 8px; }
-    .navbar-menu { order: 3; width: 100%; overflow-x: auto; }
-    .user-info { font-size: 0.78rem; }
+    #main-navbar {
+        width: 56px;
+    }
+    .sidebar-brand { padding: 12px 8px; text-align: center; }
+    .brand-logo { height: 22px; }
+    .nav-label { display: none; }
+    .nav-link { justify-content: center; padding: 10px 8px; font-size: 1.1rem; }
+    .sidebar-user { padding: 8px 4px; }
+    .user-info { font-size: 0; } /* 숨기되 role 뱃지는 유지 */
+    .user-role { font-size: 0; display: none; }
+    .btn-logout { font-size: 0.7rem; padding: 4px; }
+    body.has-sidebar > main {
+        margin-left: 56px;
+    }
 }

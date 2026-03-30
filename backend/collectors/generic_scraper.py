@@ -524,11 +524,76 @@ def collect_single(source_name: str, config: dict, keywords: list[str], days: in
     }
 
 
-def collect_all_scrapers(mode: str = "daily", batch_time: str | None = None) -> dict:
+def collect_single_by_name(source_name: str, days: int = 1) -> dict:
+    """기관명으로 단건 스크래핑 실행 (재시도용)."""
+    configs = _load_configs()
+    keywords = _load_common_keywords()
+    if not keywords:
+        return {"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": "활성 키워드가 없습니다."}
+
+    # scraper_configs.json에서 찾기
+    for cfg in configs:
+        if cfg["name"] == source_name:
+            r = collect_single(source_name, cfg, keywords, days=days)
+            _update_source_collected(source_name, r["matched"])
+            return r
+
+    # CCEI 입찰공고
+    for region_code, region_name in CCEI_ALLIM_REGIONS:
+        if source_name == f"CCEI-{region_name}":
+            notices = scrape_ccei_allim(region_code, region_name, days=days)
+            matched = _match_keywords(notices, keywords)
+            inserted, updated = save_to_db(matched)
+            r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+            _update_source_collected(source_name, r["matched"])
+            return r
+
+    # 부산창업포탈
+    if source_name == "부산창업포탈":
+        notices = scrape_busan_startup(days=days)
+        matched = _match_keywords(notices, keywords)
+        inserted, updated = save_to_db(matched)
+        r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+        _update_source_collected(source_name, r["matched"])
+        return r
+
+    # 한국예탁결제원
+    if source_name == "한국예탁결제원":
+        notices = scrape_ksd(days=days)
+        matched = _match_keywords(notices, keywords)
+        inserted, updated = save_to_db(matched)
+        r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+        _update_source_collected(source_name, r["matched"])
+        return r
+
+    return {"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": f"'{source_name}' 설정을 찾을 수 없습니다."}
+
+
+def _load_common_keywords() -> list[str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT keyword FROM keywords WHERE is_active=1 AND source_id IS NULL")
+    keywords = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return keywords
+
+
+def _update_source_collected(source_name: str, count: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
+        (count, source_name),
+    )
+    conn.commit()
+    conn.close()
+
+
+def collect_all_scrapers(days: int = 1, batch_time: str | None = None, mode: str = "daily") -> dict:
     """
     48개 스크래퍼 일괄 실행.
-    mode: 'daily'=최근 7일, 'full'=최근 30일
-    batch_time: 일괄 수집 시작 시간 (None이면 datetime('now') 사용)
+    days: 수집할 기간(일수).
+    batch_time: 일괄 수집 시작 시간 (None이면 현재 시간 사용)
     """
     configs = _load_configs()
     if not configs:
@@ -539,15 +604,7 @@ def collect_all_scrapers(mode: str = "daily", batch_time: str | None = None) -> 
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT keyword FROM keywords WHERE is_active=1 AND source_id IS NULL")
     keywords = [row[0] for row in cursor.fetchall()]
-
-    # 설정 로드
-    cursor.execute("SELECT setting_value FROM display_settings WHERE setting_key='date_range_days'")
-    row = cursor.fetchone()
-    days = int(row[0]) if row else 30
     conn.close()
-
-    if mode == "daily":
-        days = min(days, 7)
 
     if not keywords:
         logger.warning("활성 공통 키워드 없음 — 스크래핑 건너뜀")

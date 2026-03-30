@@ -146,7 +146,7 @@
                     return `
                     <div class="dash-info-row">
                         <span class="dash-info-label">${escapeHtmlNav(s.source)}</span>
-                        <span class="dash-info-value">전체 ${s.total}건 / 진행중 ${s.ongoing || 0}건${lastInfo}</span>
+                        <span class="dash-info-value">전체 ${s.total}건 / <a href="/index.html?source=${encodeURIComponent(s.source)}" style="color:#2980b9;text-decoration:none;font-weight:600;" title="${escapeHtmlNav(s.source)} 진행중 공고 보기">진행중 ${s.ongoing || 0}건</a>${lastInfo}</span>
                     </div>`;
                 }).join('');
                 document.getElementById('source-stats').innerHTML = statsHtml || '<div class="dash-info-row"><span class="dash-info-label">데이터 없음</span></div>';
