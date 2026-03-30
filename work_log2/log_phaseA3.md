@@ -31,7 +31,7 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
   - `_parse_date(text)` — 다양한 날짜 형식 파싱 (yyyy.MM.dd, yy.MM.dd, yyyyMMdd, 한국어, 기간)
   - `_match_keywords(notices, keywords)` — 제목 기준 키워드 매칭
   - `save_to_db(notices)` — bid_notices UPSERT
-  - `collect_all_scrapers(mode)` — 47개 일괄 실행
+  - `collect_all_scrapers(mode)` — 49개 일괄 실행
 
 ### 2. 스크래퍼 설정 파일 (신규)
 - **파일:** `backend/collectors/scraper_configs.json`
@@ -40,7 +40,7 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 
 ### 3. DB 변경
 - **파일:** `backend/database.py`
-- `collect_sources` 테이블에 47개 행 추가 (`collector_type="scraper"`)
+- `collect_sources` 테이블에 49개 행 추가 (`collector_type="scraper"`)
   - HTML 스크래핑 39개 + CCEI 입찰공고 7개 + 한국예탁결제원 JSON 1개
 - INSERT OR IGNORE로 중복 방지
 
@@ -103,7 +103,7 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 - `skip_no_date: false` 옵션 추가 (오늘 날짜 대체) → 수집 12건/매칭 11건
 
 ## 최종 테스트 결과
-- **47개 사이트 전체 성공 (실패 0)**
+- **48개 사이트 전체 성공 (실패 0)**
 - 소요시간: 약 50~60초
 - 수집 63건 → 키워드 매칭 45건 → DB 저장 45건 (03-30 기준, 신규 3개 제외)
 
@@ -114,8 +114,8 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 | HTML 스크래핑 | 39개 | ✅ 구현 완료 |
 | CCEI 입찰공고 JSON | 7개 | ✅ 구현 완료 |
 | 한국예탁결제원 JSON | 1개 | ✅ 구현 완료 |
-| **합계** | **47개** | **일괄 수집 가능** |
-| 제외 (입찰 아님) | 1개 | 부산창업포탈 |
+| 부산창업포탈 JSON | 1개 | ✅ 구현 완료 |
+| **합계** | **48개** | **일괄 수집 가능** |
 | URL 변경 필요 | 1개 | 소상공인시장진흥공단(실효성 낮음) |
 
 검증 상세는 `work_log2/site_verification.xlsx`에 정리

@@ -418,7 +418,7 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 
 #### 구현 항목
 - [x] 범용 스크래퍼 프레임워크 설계 (설정 기반 HTML 파싱) — `generic_scraper.py`
-- [x] `collect_sources`에 47개 스크래퍼 출처 추가 (HTML 39개 + CCEI 입찰 7개 + 한국예탁결제원 JSON 1개)
+- [x] `collect_sources`에 48개 스크래퍼 출처 추가 (HTML 39개 + CCEI 입찰 7개 + JSON API 2개)
 - [x] 39개 사이트 셀렉터 분석 및 `scraper_configs.json` 작성
 - [x] 일괄 수집 API (`POST /api/collect?target=scrapers`) 및 프론트엔드 UI
 - [x] CCEI 입찰공고 스크래퍼 (allimList.json — 7개 지역 JSON API)

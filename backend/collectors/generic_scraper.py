@@ -170,6 +170,62 @@ def scrape_ccei_allim(region_code: str, region_name: str, days: int = 30) -> lis
     return notices
 
 
+def scrape_busan_startup(days: int = 30) -> list[dict]:
+    """부산창업포탈 지원사업 수집 (JSON API)."""
+    api_url = "https://busanstartup.kr/_Api/bizListData"
+    cutoff = datetime.now() - timedelta(days=days)
+    notices = []
+
+    for page in range(1, 4):
+        try:
+            resp = requests.get(api_url, params={"deadline": "N", "pageNo": str(page), "pageSize": "10"},
+                                headers=DEFAULT_HEADERS, timeout=15)
+            if resp.status_code != 200:
+                break
+            data = resp.json()
+            items = data.get("list", [])
+            if not items:
+                break
+
+            for item in items:
+                busi_code = str(item.get("busi_code", ""))
+                title = (item.get("busi_title") or "").strip()
+                raw_date = (item.get("regi_date") or "")[:10]  # "2025-03-27 10:50:56.0" -> "2025-03-27"
+                if not busi_code or not title:
+                    continue
+
+                parsed_date = _parse_date(raw_date)
+                if not parsed_date:
+                    continue
+                try:
+                    if datetime.strptime(parsed_date, "%Y-%m-%d") < cutoff:
+                        continue
+                except ValueError:
+                    continue
+
+                notices.append({
+                    "source": "부산창업포탈",
+                    "title": title,
+                    "organization": item.get("busi_comp", "부산창업포탈"),
+                    "category": "지원사업",
+                    "bid_no": f"BUSAN-{busi_code}",
+                    "start_date": parsed_date,
+                    "end_date": "",
+                    "status": "ongoing",
+                    "url": f"https://busanstartup.kr/biz_sup?mcode=biz02&busi_code={busi_code}",
+                    "keywords": "",
+                    "detail_url": f"https://busanstartup.kr/biz_sup?mcode=biz02&busi_code={busi_code}",
+                    "apply_url": "",
+                    "target": item.get("appl_type", ""),
+                    "content": "",
+                })
+        except Exception as e:
+            logger.warning(f"  부산창업포탈 페이지 {page} 요청 실패: {e}")
+            break
+
+    return notices
+
+
 def scrape_ksd(days: int = 30) -> list[dict]:
     """한국예탁결제원 입찰공고 수집 (JSON API)."""
     api_url = "https://www.ksd.or.kr/ko/api/content"
@@ -558,6 +614,35 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
             results.append({"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
             failed += 1
 
+    # 부산창업포탈 JSON API 수집
+    try:
+        source_name = "부산창업포탈"
+        logger.info(f"  스크래핑: {source_name}")
+        notices = scrape_busan_startup(days=days)
+        matched = _match_keywords(notices, keywords)
+        inserted, updated = save_to_db(matched)
+
+        r = {"source": source_name, "collected": len(notices), "matched": len(matched), "inserted": inserted, "updated": updated}
+        results.append(r)
+        success += 1
+        total_collected += r["collected"]
+        total_matched += r["matched"]
+        total_inserted += r["inserted"]
+        logger.info(f"  ✅ {source_name}: 수집 {r['collected']}건, 매칭 {r['matched']}건, 신규 {r['inserted']}건")
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
+            (r["matched"], source_name),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"  ❌ 부산창업포탈 수집 실패: {e}")
+        results.append({"source": "부산창업포탈", "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
+        failed += 1
+
     # 한국예탁결제원 JSON API 수집
     try:
         source_name = "한국예탁결제원"
@@ -587,7 +672,7 @@ def collect_all_scrapers(mode: str = "daily") -> dict:
         results.append({"source": "한국예탁결제원", "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)})
         failed += 1
 
-    total_sites = len(configs) + len(CCEI_ALLIM_REGIONS) + 1  # +1 한국예탁결제원
+    total_sites = len(configs) + len(CCEI_ALLIM_REGIONS) + 2  # +2 부산창업포탈, 한국예탁결제원
     return {
         "total": total_sites,
         "success": success,

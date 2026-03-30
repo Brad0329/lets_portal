@@ -85,14 +85,12 @@ sections = [
         (45, "CCEI-인천", "https://ccei.creativekorea.or.kr/incheon/allim/allimList.json", "POST JSON API"),
         (46, "CCEI-충북", "https://ccei.creativekorea.or.kr/chungbuk/allim/allimList.json", "POST JSON API"),
     ]),
-    ("✅ 구현 완료 — 한국예탁결제원 JSON API (1개)", PatternFill('solid', fgColor='B7DEE8'), Font(name='Arial', bold=True, size=11, color='003366'), [
+    ("✅ 구현 완료 — JSON API (2개)", PatternFill('solid', fgColor='B7DEE8'), Font(name='Arial', bold=True, size=11, color='003366'), [
         (47, "한국예탁결제원", "https://www.ksd.or.kr/ko/api/content?menuId=KR_ABT_070300", "React SPA → JSON API 직접 호출"),
+        (48, "부산창업포탈", "https://busanstartup.kr/_Api/bizListData", "JS 렌더링 → JSON API 직접 호출"),
     ]),
     ("🔄 URL 변경 필요 (1개)", PatternFill('solid', fgColor='FCD5B4'), Font(name='Arial', bold=True, size=11, color='974706'), [
         (48, "소상공인시장진흥공단", "https://semas.or.kr/web/board/webBoardList.kmdc?bCd=220&pNm=BOA0102", "입찰정보 5건뿐, 실효성 낮음"),
-    ]),
-    ("❌ 제외 (1개)", PatternFill('solid', fgColor='FFC7CE'), Font(name='Arial', bold=True, size=11, color='9C0006'), [
-        (49, "부산창업포탈", "https://busanstartup.kr/biz_sup?mcode=biz02&deleteYn=N&busi_code=820", "창업지원 프로그램, 입찰 아님"),
     ]),
 ]
 
@@ -134,7 +132,7 @@ for section_label, section_fill, section_label_font, items in sections:
 
 row += 1
 ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
-ws.cell(row=row, column=1, value="※ 구현 완료 47개 사이트는 일괄 수집 버튼 1개로 수집 가능").font = Font(name='Arial', size=10, italic=True, color='666666')
+ws.cell(row=row, column=1, value="※ 구현 완료 48개 사이트는 일괄 수집 버튼 1개로 수집 가능 (소상공인시장진흥공단 제외 — 실효성 낮음)").font = Font(name='Arial', size=10, italic=True, color='666666')
 
 out = r"C:\Users\user\Documents\lets_portal\work_log2\site_verification.xlsx"
 wb.save(out)
