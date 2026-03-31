@@ -439,6 +439,10 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [x] 스크래퍼 실패 기관 재시도 — 실패 표시 + 재시도 버튼, 단건 수집 API
 - [x] 검토요청/입찰예정 검색창 삭제, 기본 정렬 입찰공고일 최신순
 - [x] 대시보드 진행중 건수 클릭 → 출처별 공고 리스트 이동
+- [x] 날짜 표시 UTC→로컬 수정 — 프론트(toISOString→로컬), 백엔드(datetime('now')→datetime('now','localtime'))
+- [x] 스크래퍼 중복 수집 수정 — hash()→hashlib.md5() 결정적 해시로 변경, bid_no 안정화
+- [x] 공고 리스트 2차 정렬 — 동일 날짜 내 키워드 개수 내림차순 추가
+- [x] 키워드 리빌딩 — 중복/포함 관계 정리 (85개→69개, API 호출 19% 감소)
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)
 

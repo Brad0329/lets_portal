@@ -4,6 +4,7 @@
 - 최근 1개월 공고 수집 → 키워드 매칭 → DB 저장
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -431,7 +432,8 @@ def scrape_site(config: dict, days: int = 30) -> list[dict]:
                     parsed_date = datetime.now().strftime("%Y-%m-%d")
 
                 # 중복 방지
-                bid_no = f"SCR-{source_key}-{abs(hash(title + link)) % 1000000:06d}"
+                stable_hash = hashlib.md5((title + link).encode()).hexdigest()[:10]
+                bid_no = f"SCR-{source_key}-{stable_hash}"
                 if bid_no in seen:
                     continue
                 seen.add(bid_no)
@@ -582,7 +584,7 @@ def _update_source_collected(source_name: str, count: int):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE name=?",
+        "UPDATE collect_sources SET last_collected_at=datetime('now','localtime'), last_collected_count=? WHERE name=?",
         (count, source_name),
     )
     conn.commit()

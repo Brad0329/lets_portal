@@ -78,7 +78,7 @@ def collect_by_source(source_id: int, days: int = 1, mode: str = "daily") -> dic
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE collect_sources SET last_collected_at=datetime('now'), last_collected_count=? WHERE id=?",
+            "UPDATE collect_sources SET last_collected_at=datetime('now','localtime'), last_collected_count=? WHERE id=?",
             (result.get("collected", 0), source_id),
         )
         conn.commit()

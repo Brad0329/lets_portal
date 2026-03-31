@@ -10,8 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkAuth();
     if (!user) return;
     await loadAll();
-    // 스크래퍼 날짜 기본값: 오늘
-    const today = new Date().toISOString().slice(0, 10);
+    // 스크래퍼 날짜 기본값: 오늘 (로컬 시간 기준)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const sdEl = document.getElementById('scraper-start-date');
     const edEl = document.getElementById('scraper-end-date');
     if (sdEl) sdEl.value = today;
@@ -64,7 +65,8 @@ function renderSources() {
         const resultColor = cr ? `color:${cr.color}` : '';
         const kws = sourceKeywords[s.id] || [];
 
-        const today = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
         return `
         <div class="source-card${inactive}" id="source-card-${s.id}">

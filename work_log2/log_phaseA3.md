@@ -189,6 +189,35 @@ API가 없는 입찰공고 사이트를 HTML 스크래핑/JSON API로 수집.
 | `work_log2/site_verification.xlsx` | 신규 (검증 결과) |
 | `work_log2/log_phaseA3.md` | 신규 (작업 로그) |
 
+## 버그 수정 및 개선 (03-31)
+
+### 날짜 표시 UTC → 로컬 시간 수정
+- **프론트엔드 (source-list.js)**: `new Date().toISOString().slice(0,10)` → `getFullYear()/getMonth()/getDate()` 로컬 시간 기준으로 변경
+  - 수집 날짜 입력 기본값이 오전 9시 전에 어제로 표시되던 문제 수정 (2곳)
+- **백엔드 (collect_all.py, generic_scraper.py)**: `datetime('now')` → `datetime('now','localtime')` 변경
+  - `last_collected_at` 수집 시간이 UTC로 저장되어 9시간 느리게 표시되던 문제 수정 (2곳)
+
+### 스크래퍼 중복 수집 수정
+- **원인**: `hash()` 함수는 Python 실행마다 다른 값 반환 (Python 3.3+ 보안 해시 랜덤화)
+  - 동일 공고(제목+링크)도 수집할 때마다 다른 `bid_no` 생성 → UNIQUE 제약 우회되어 중복 등록
+- **수정**: `hash()` → `hashlib.md5()` (결정적 해시)로 변경
+  - `bid_no = f"SCR-{source_key}-{abs(hash(title + link)) % 1000000:06d}"` (변경 전)
+  - `bid_no = f"SCR-{source_key}-{hashlib.md5((title+link).encode()).hexdigest()[:10]}"` (변경 후)
+- **영향 범위**: 스크래퍼 48개 출처만 해당 (API 4개 출처는 공식 ID 사용으로 문제 없음)
+- 기존 중복 데이터 68건 삭제 후 재수집으로 검증 완료
+
+### 공고 리스트 2차 정렬 추가
+- 공고 중인 사업 리스트: 1차 입찰공고일 최신순 + **2차 키워드 개수 내림차순**
+  - 같은 날짜 공고 중 키워드가 많이 매칭된 공고가 상위 노출
+  - SQL로 계산: `LENGTH(keywords) - LENGTH(REPLACE(keywords, ',', '')) + 1`
+  - 별도 컬럼 추가 없이 기존 콤마 구분 문자열에서 실시간 계산
+
+### 키워드 리빌딩 (85개 → 69개)
+- 나라장터 API 호출 최적화를 위해 중복/포함 관계 키워드 정리
+- 삭제 16건: 띄어쓰기 중복 3건, 짧은 키워드에 포함되는 긴 키워드 13건
+- API 호출 255회 → 207회 (약 19% 감소)
+- 상세: `work_log2/Keyword_rebuilding.md`
+
 ## 향후 작업
 - [ ] 키워드 매칭 ON/OFF 옵션 (출처별)
 - [ ] 스크래핑 에러 알림 (사이트 개편 감지)

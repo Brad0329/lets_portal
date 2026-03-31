@@ -314,10 +314,11 @@ def get_notices(
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
 
+    kw_count_expr = "CASE WHEN keywords IS NULL OR keywords = '' THEN 0 ELSE LENGTH(keywords) - LENGTH(REPLACE(keywords, ',', '')) + 1 END"
     if sort == "deadline":
-        order = "CASE WHEN end_date = '' THEN 1 ELSE 0 END, end_date ASC"
+        order = f"CASE WHEN end_date = '' THEN 1 ELSE 0 END, end_date ASC, {kw_count_expr} DESC"
     else:
-        order = "CASE WHEN start_date = '' THEN 1 ELSE 0 END, start_date DESC"
+        order = f"CASE WHEN start_date = '' THEN 1 ELSE 0 END, start_date DESC, {kw_count_expr} DESC"
 
     cursor.execute(f"SELECT COUNT(*) FROM bid_notices WHERE {where_clause}", params)
     total = cursor.fetchone()[0]
