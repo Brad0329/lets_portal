@@ -239,6 +239,42 @@ def init_db():
             (name, ctype),
         )
 
+    # 나라장터 관심 중분류 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS nara_interest_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            large_class TEXT NOT NULL,
+            mid_class TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1,
+            UNIQUE(large_class, mid_class)
+        )
+    """)
+    # 초기 데이터 (엑셀 기반)
+    interest_categories = [
+        ("연구조사서비스", "학술연구서비스"),
+        ("연구조사서비스", "시장 및 여론조사"),
+        ("교육 및 전문직종/기술서비스", "교육서비스"),
+        ("교육 및 전문직종/기술서비스", "환경관리 서비스"),
+        ("교육 및 전문직종/기술서비스", "기술시험, 검사 및 분석"),
+        ("교육 및 전문직종/기술서비스", "문화재 조사/발굴 및 수리"),
+        ("교육 및 전문직종/기술서비스", "보건서비스"),
+        ("교육 및 전문직종/기술서비스", "회계서비스"),
+        ("교육 및 전문직종/기술서비스", "법무서비스"),
+        ("교육 및 전문직종/기술서비스", "번역 및 통역서비스"),
+        ("행사관리 및 기타 사업 지원서비스", "기타"),
+        ("행사관리 및 기타 사업 지원서비스", "행사 기획 및 대행"),
+        ("행사관리 및 기타 사업 지원서비스", "전시관 및 홍보관 설치"),
+        ("행사관리 및 기타 사업 지원서비스", "농.림.어업 서비스"),
+        ("여행, 숙박, 음식, 운송 및 보관서비스", "여행서비스"),
+        ("매체제작, 디자인, 홍보/마케팅 서비스", "매체제작"),
+        ("매체제작, 디자인, 홍보/마케팅 서비스", "홍보 및 마케팅"),
+    ]
+    for lg, mid in interest_categories:
+        cursor.execute(
+            "INSERT OR IGNORE INTO nara_interest_categories (large_class, mid_class) VALUES (?, ?)",
+            (lg, mid),
+        )
+
     # keywords 테이블에 source_id 컬럼 추가 (NULL=공통, 값=출처 전용)
     try:
         cursor.execute("ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)")

@@ -50,16 +50,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─── 출처 필터 동적 로드 ────────────────────────
 async function loadSourceFilter() {
     try {
-        const res = await fetch(`${API_BASE}/api/sources`);
+        // 실제 공고가 있는 출처만 가져오기
+        const res = await fetch(`${API_BASE}/api/notices/sources`);
         if (!res.ok) return;
         const sources = await res.json();
         const select = document.getElementById('filter-source');
         // 기존 옵션 제거 (첫 번째 "전체 출처" 유지)
         while (select.options.length > 1) select.remove(1);
-        sources.filter(s => s.is_active).forEach(s => {
+        sources.forEach(s => {
             const opt = document.createElement('option');
-            opt.value = s.name;
-            opt.textContent = s.name;
+            opt.value = s.source;
+            opt.textContent = `${s.source} (${s.count})`;
             select.appendChild(opt);
         });
     } catch (e) { console.error('출처 필터 로드 실패:', e); }
@@ -83,6 +84,15 @@ async function loadStats() {
     } catch (e) {
         console.error('통계 로드 실패:', e);
     }
+}
+
+function searchByKeyword(keyword) {
+    const input = document.getElementById('search-input');
+    input.value = keyword;
+    // 정렬: 입찰공고일 최신순 (기본값)
+    document.getElementById('filter-sort').value = 'latest';
+    currentPage = 1;
+    loadNotices();
 }
 
 // ─── 공고 목록 로드 ──────────────────────────
@@ -132,7 +142,7 @@ function renderNotices(notices) {
 
         const keywords = (n.keywords || '').split(',')
             .filter(k => k.trim())
-            .map(k => `<span class="keyword-tag">${escapeHtml(k.trim())}</span>`)
+            .map(k => `<span class="keyword-tag" onclick="event.stopPropagation(); searchByKeyword('${escapeHtml(k.trim())}')" style="cursor:pointer;">${escapeHtml(k.trim())}</span>`)
             .join('');
 
         return `<tr onclick="openModal(${n.id})">

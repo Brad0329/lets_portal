@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (hasPermission('display')) loadSettings();
     if (hasPermission('keyword')) loadKeywords();
     if (hasPermission('org')) loadOrganizations();
+    loadInterestCategories();
 
     if (user.role === 'admin') {
         document.getElementById('user-mgmt-section').style.display = '';
@@ -159,6 +160,59 @@ async function toggleAllKeywords(active) {
         kw.is_active = active ? 1 : 0;
     }
     renderKeywords();
+}
+
+// ─── 나라장터 관심 중분류 ─────────────────────
+async function loadInterestCategories() {
+    try {
+        const res = await fetch(`${API_BASE}/api/nara-categories`);
+        if (!res.ok) return;
+        const categories = await res.json();
+        renderInterestCategories(categories);
+    } catch (e) { console.error('관심 중분류 로드 실패:', e); }
+}
+
+function renderInterestCategories(categories) {
+    const container = document.getElementById('interest-categories');
+    if (!categories || categories.length === 0) {
+        container.innerHTML = '<p style="color:#aaa;">등록된 관심 중분류가 없습니다.</p>';
+        return;
+    }
+
+    // 대분류별 그룹핑
+    const groups = {};
+    categories.forEach(c => {
+        if (!groups[c.large_class]) groups[c.large_class] = [];
+        groups[c.large_class].push(c);
+    });
+
+    let html = '';
+    for (const [lg, items] of Object.entries(groups)) {
+        html += `<div style="margin-bottom:12px;">
+            <div style="font-weight:600;font-size:13px;color:#1a5276;margin-bottom:4px;">${escapeHtml(lg)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+        items.forEach(c => {
+            const active = c.is_active ? '' : 'opacity:0.4;text-decoration:line-through;';
+            const bg = c.is_active ? '#d4efdf' : '#f2f3f4';
+            const border = c.is_active ? '#27ae60' : '#bdc3c7';
+            html += `<span onclick="toggleCategory(${c.id}, ${c.is_active ? 0 : 1})"
+                style="cursor:pointer;padding:4px 10px;border-radius:12px;font-size:12px;background:${bg};border:1px solid ${border};${active}"
+                title="클릭하여 ${c.is_active ? '비활성화' : '활성화'}">${escapeHtml(c.mid_class)}</span>`;
+        });
+        html += `</div></div>`;
+    }
+    container.innerHTML = html;
+}
+
+async function toggleCategory(id, newState) {
+    try {
+        await fetch(`${API_BASE}/api/nara-categories/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: newState }),
+        });
+        loadInterestCategories();
+    } catch (e) { console.error('중분류 토글 실패:', e); }
 }
 
 // ─── 기관 목록 ───────────────────────────────

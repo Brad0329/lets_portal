@@ -342,6 +342,22 @@ def get_notices(
     }
 
 
+@app.get("/api/notices/sources")
+def get_notice_sources(request: Request):
+    """실제 공고가 있는 출처 목록 (건수 포함)"""
+    require_login(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT source, COUNT(*) as count FROM bid_notices
+        WHERE id NOT IN (SELECT notice_id FROM notice_tags WHERE tag = '제외')
+        GROUP BY source ORDER BY count DESC
+    """)
+    sources = [{"source": row["source"], "count": row["count"]} for row in cursor.fetchall()]
+    conn.close()
+    return sources
+
+
 @app.get("/api/notices/stats")
 def get_stats(request: Request):
     """소스별 통계"""
@@ -562,15 +578,27 @@ def set_notice_tag(request: Request, notice_id: int, body: TagRequest):
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO notice_tags (notice_id, tag, tagged_by, memo)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(notice_id) DO UPDATE SET
-            tag = excluded.tag,
-            tagged_by = excluded.tagged_by,
-            memo = excluded.memo,
-            updated_at = datetime('now')
-    """, (notice_id, body.tag, user["id"], body.memo))
+    if body.memo:
+        # memo가 있으면 덮어쓰기
+        cursor.execute("""
+            INSERT INTO notice_tags (notice_id, tag, tagged_by, memo)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(notice_id) DO UPDATE SET
+                tag = excluded.tag,
+                tagged_by = excluded.tagged_by,
+                memo = excluded.memo,
+                updated_at = datetime('now')
+        """, (notice_id, body.tag, user["id"], body.memo))
+    else:
+        # memo가 없으면 기존 memo 유지
+        cursor.execute("""
+            INSERT INTO notice_tags (notice_id, tag, tagged_by, memo)
+            VALUES (?, ?, ?, '')
+            ON CONFLICT(notice_id) DO UPDATE SET
+                tag = excluded.tag,
+                tagged_by = excluded.tagged_by,
+                updated_at = datetime('now')
+        """, (notice_id, body.tag, user["id"]))
     conn.commit()
     conn.close()
 
@@ -737,6 +765,32 @@ def delete_keyword(request: Request, keyword_id: int):
 
 
 # ─── 기관 관리 API ────────────────────────────────
+
+@app.get("/api/nara-categories")
+def get_nara_categories(request: Request):
+    """나라장터 관심 중분류 목록"""
+    require_login(request)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, large_class, mid_class, is_active FROM nara_interest_categories ORDER BY id")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+@app.put("/api/nara-categories/{cat_id}")
+def update_nara_category(request: Request, cat_id: int, body: dict):
+    """나라장터 관심 중분류 활성/비활성 토글"""
+    user = require_login(request)
+    if not has_permission(user, "keyword"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 필요합니다.")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE nara_interest_categories SET is_active=? WHERE id=?", (body.get("is_active", 1), cat_id))
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
 
 @app.get("/api/organizations")
 def get_organizations(request: Request):

@@ -287,6 +287,41 @@ def save_to_db(notices: list[dict]):
     return inserted, updated
 
 
+def _filter_by_interest_categories(notices: list[dict]) -> tuple[list[dict], int]:
+    """관심 중분류에 해당하는 공고만 필터링. 관심 목록이 없으면 전체 통과."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT large_class, mid_class FROM nara_interest_categories WHERE is_active=1")
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return notices, 0  # 관심 목록 없으면 전체 통과
+
+    # 관심 중분류 set (공백 trim)
+    interest_set = set()
+    for row in rows:
+        interest_set.add(row[1].strip())
+
+    original_count = len(notices)
+    filtered = []
+    for n in notices:
+        pc = n.get("procure_class", "")
+        if not pc:
+            filtered.append(n)  # 분류 없는 공고는 포함 (K-Startup 등과 통일)
+            continue
+        # "대분류 > 중분류" 에서 중분류 추출
+        parts = pc.split(">")
+        mid = parts[-1].strip() if len(parts) >= 2 else ""
+        if mid in interest_set:
+            filtered.append(n)
+
+    filtered_count = original_count - len(filtered)
+    if filtered_count > 0:
+        logger.info(f"나라장터 관심 중분류 필터: {original_count}건 → {len(filtered)}건 ({filtered_count}건 제외)")
+    return filtered, filtered_count
+
+
 def collect_and_save(keywords=None, days: int = 1, mode="daily"):
     """키워드 목록 로드 → 수집 → 저장
     days: 수집할 기간(일수). 직접 지정 시 mode 무시.
@@ -302,8 +337,12 @@ def collect_and_save(keywords=None, days: int = 1, mode="daily"):
 
     logger.info(f"나라장터 수집 시작 (mode={mode}): 키워드 {len(keywords)}개, 기간 {days}일")
     notices = fetch_announcements(keywords, days=days)
+
+    # 관심 중분류 필터링
+    notices, filtered_count = _filter_by_interest_categories(notices)
+
     inserted, updated = save_to_db(notices)
-    return {"source": "나라장터", "collected": len(notices), "inserted": inserted, "updated": updated}
+    return {"source": "나라장터", "collected": len(notices), "inserted": inserted, "updated": updated, "filtered": filtered_count}
 
 
 if __name__ == "__main__":

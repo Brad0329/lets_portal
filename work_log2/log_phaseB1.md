@@ -89,3 +89,33 @@
 | `frontend/settings.html` | 수정 |
 | `work_log2/plan_2.md` | 수정 |
 | `work_log2/log_phaseB1.md` | 신규 |
+
+## 추가 구현 (03-31 오후)
+
+### 7. 나라장터 관심 중분류 필터
+- **파일:** `backend/database.py`, `backend/collectors/nara.py`, `backend/main.py`
+- `nara_interest_categories` 테이블 생성 (5개 대분류, 17개 중분류)
+- 나라장터 수집 시 관심 중분류에 해당하는 공고만 저장 (`_filter_by_interest_categories()`)
+- 분류 없는 공고는 포함, 관심 목록 비어있으면 전체 통과
+- 현재 데이터 기준: 526건 중 372건 매칭, 154건 제외
+- 설정 페이지에서 중분류 태그 클릭으로 활성/비활성 토글
+- API: `GET /api/nara-categories`, `PUT /api/nara-categories/{id}`
+
+### 8. 출처 필터 개선
+- **파일:** `backend/main.py`, `frontend/js/app.js`
+- 공고 중인 사업 출처 셀렉트박스: `collect_sources` → 실제 공고 있는 출처만 표시
+- `GET /api/notices/sources` API 추가 (건수 포함, 제외 태그 제외)
+- 표시: `나라장터 (349)`, `K-Startup (9)` 형태
+
+### 9. 키워드 태그 클릭 → 검색
+- **파일:** `frontend/js/app.js`
+- 공고 리스트의 키워드 태그 클릭 → 검색창에 해당 키워드 입력 + 검색 실행
+- 정렬: 입찰공고일 최신순 + 키워드 개수순
+
+### 10. 입찰예정 리스트 사유 표시
+- **파일:** `backend/main.py`, `frontend/bid-list.html`
+- 태그 변경(검토요청→입찰대상) 시 memo가 비어있으면 기존 memo 보존
+- 입찰예정 리스트에 첨부파일 행 + 검토요청 사유 행 표시
+
+### 11. 고아 태그 정리
+- `notice_tags`에서 `bid_notices`에 존재하지 않는 공고의 태그 5건 삭제
