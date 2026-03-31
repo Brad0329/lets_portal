@@ -223,13 +223,15 @@ function renderModal(n) {
         const currentTag = n.tag || '';
         const isAdmin = hasPermission('bid_tag');
         let btns = '';
-        // 검토요청: 모든 로그인 사용자
-        btns += `<button class="tag-btn tag-btn-review ${currentTag === '검토요청' ? 'active' : ''}" onclick="setTag(${n.id}, '검토요청')">검토요청</button>`;
-        // 입찰대상/제외: 관리자만
-        if (isAdmin) {
-            btns += `<button class="tag-btn tag-btn-bid ${currentTag === '입찰대상' ? 'active' : ''}" onclick="setTag(${n.id}, '입찰대상')">입찰대상</button>`;
-            btns += `<button class="tag-btn tag-btn-exclude ${currentTag === '제외' ? 'active' : ''}" onclick="setTag(${n.id}, '제외')">제외</button>`;
+        // 검토요청: 모든 로그인 사용자 — 사유 입력 UI 토글
+        if (currentTag !== '검토요청') {
+            btns += `<button class="tag-btn tag-btn-review" onclick="showReviewInput(${n.id})">검토요청</button>`;
+        } else {
+            btns += `<button class="tag-btn tag-btn-review active" disabled>검토요청</button>`;
         }
+        // 입찰대상/제외: 모든 로그인 사용자
+        btns += `<button class="tag-btn tag-btn-bid ${currentTag === '입찰대상' ? 'active' : ''}" onclick="setTag(${n.id}, '입찰대상')">입찰대상</button>`;
+        btns += `<button class="tag-btn tag-btn-exclude ${currentTag === '제외' ? 'active' : ''}" onclick="setTag(${n.id}, '제외')">제외</button>`;
         if (currentTag) {
             btns += `<button class="tag-btn tag-btn-clear" onclick="removeTag(${n.id})">태그 해제</button>`;
         }
@@ -322,12 +324,43 @@ function renderModal(n) {
 }
 
 // ─── 태그 관리 ────────────────────────────────
-async function setTag(noticeId, tag) {
+function showReviewInput(noticeId) {
+    // 이미 입력창이 있으면 무시
+    if (document.getElementById('review-input-area')) return;
+
+    const tagActions = document.querySelector('.modal-tag-actions');
+    if (!tagActions) return;
+
+    const div = document.createElement('div');
+    div.id = 'review-input-area';
+    div.style.cssText = 'margin-top:10px;padding:10px;background:#fef9e7;border:1px solid #f9e79f;border-radius:6px;';
+    div.innerHTML = `
+        <label style="font-size:13px;font-weight:600;color:#7d6608;display:block;margin-bottom:6px;">검토요청 사유</label>
+        <textarea id="review-memo-input" rows="15" style="width:100%;padding:8px;border:1px solid #d5d8dc;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box;" placeholder="검토요청 사유를 입력하세요"></textarea>
+        <div style="margin-top:8px;text-align:right;">
+            <button onclick="document.getElementById('review-input-area').remove()" style="padding:6px 14px;border:1px solid #d5d8dc;background:#fff;border-radius:4px;cursor:pointer;margin-right:6px;">취소</button>
+            <button onclick="submitReview(${noticeId})" style="padding:6px 14px;border:none;background:#2980b9;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">완료</button>
+        </div>
+    `;
+    tagActions.parentNode.insertBefore(div, tagActions.nextSibling);
+    document.getElementById('review-memo-input').focus();
+}
+
+async function submitReview(noticeId) {
+    const memo = document.getElementById('review-memo-input').value.trim();
+    if (!memo) {
+        alert('검토요청 사유를 입력해주세요.');
+        return;
+    }
+    await setTag(noticeId, '검토요청', memo);
+}
+
+async function setTag(noticeId, tag, memo = '') {
     try {
         const res = await fetch(`${API_BASE}/api/notice-tags/${noticeId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tag }),
+            body: JSON.stringify({ tag, memo }),
         });
         const data = await res.json();
         if (data.success) {
@@ -335,11 +368,42 @@ async function setTag(noticeId, tag) {
             const detailRes = await fetch(`${API_BASE}/api/notices/${noticeId}`);
             const detail = await detailRes.json();
             renderModal(detail);
+            // 첨부파일 백그라운드 수집 중이면 3초 후 자동 새로고침
+            if (data.attachment_scraping) {
+                _showAttachmentLoading();
+                setTimeout(async () => {
+                    const refreshRes = await fetch(`${API_BASE}/api/notices/${noticeId}`);
+                    const refreshData = await refreshRes.json();
+                    renderModal(refreshData);
+                }, 3000);
+            }
             // 제외 태그 시 목록에서 사라지므로 리로드
             if (tag === '제외') loadNotices();
         }
     } catch (e) {
         console.error('태그 설정 실패:', e);
+    }
+}
+
+function _showAttachmentLoading() {
+    const attachArea = document.querySelector('.modal-attachments');
+    if (attachArea) {
+        attachArea.innerHTML = '<label>첨부파일</label><p style="color:#888;font-size:13px;">📎 첨부파일 수집 중...</p>';
+    } else {
+        // 첨부파일 영역이 아직 없으면 모달 하단에 추가
+        const modalBody = document.querySelector('.modal-body');
+        if (modalBody) {
+            const div = document.createElement('div');
+            div.className = 'modal-attachments';
+            div.innerHTML = '<label>첨부파일</label><p style="color:#888;font-size:13px;">📎 첨부파일 수집 중...</p>';
+            // 태그 버튼 영역 앞에 삽입
+            const tagActions = modalBody.querySelector('.modal-tag-actions');
+            if (tagActions) {
+                modalBody.insertBefore(div, tagActions);
+            } else {
+                modalBody.appendChild(div);
+            }
+        }
     }
 }
 

@@ -6,7 +6,11 @@
     <title>검토요청 공고 - LETS 프로젝트 관리</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/navbar.css">
-    <style>header { display: none; }</style>
+    <style>
+        header { display: none; }
+        .attach-row td { border-top: none !important; }
+        .attach-row:hover { background: #eef3f8 !important; }
+    </style>
 </head>
 <body>
     <nav id="main-navbar"></nav>
@@ -108,7 +112,9 @@
                 const statusBadge = n.status === 'ongoing'
                     ? '<span class="badge badge-ongoing">진행중</span>'
                     : '<span class="badge badge-closed">마감</span>';
-                return `<tr onclick="openModal(${n.id})">
+
+                // 공고 행
+                let rows = `<tr onclick="openModal(${n.id})" style="cursor:pointer;">
                     <td><span class="source-badge ${sourceClass}">${escapeHtml(n.source)}</span></td>
                     <td>${escapeHtml(n.title)}</td>
                     <td>${escapeHtml(n.organization || '')}</td>
@@ -116,7 +122,61 @@
                     <td>${statusBadge}</td>
                     <td>${escapeHtml(n.tagged_by_name || '-')}</td>
                 </tr>`;
+
+                // 첨부파일 전용 행 (attachments → file_url 폴백)
+                let attachContent = '<span style="color:#aaa;">첨부파일 없음</span>';
+                const attachSrc = n.attachments || n.file_url;
+                if (attachSrc) {
+                    try {
+                        const files = JSON.parse(attachSrc);
+                        if (files.length > 0) {
+                            attachContent = files.map(f =>
+                                `<a href="${escapeHtml(f.url)}" target="_blank" onclick="event.stopPropagation()" style="color:#2980b9;text-decoration:none;margin-right:12px;white-space:nowrap;">📎 ${escapeHtml(f.name)}</a>`
+                            ).join('');
+                        }
+                    } catch {}
+                }
+                rows += `<tr class="attach-row">
+                    <td colspan="6" style="padding:2px 8px 8px 8px;border-top:none;background:#f8f9fa;">
+                        <div style="display:flex;flex-wrap:wrap;gap:4px 0;font-size:12px;">${attachContent}</div>
+                    </td>
+                </tr>`;
+
+                // 사유 + 태그 버튼 행
+                const memoText = n.tag_memo ? escapeHtml(n.tag_memo).replace(/\n/g, '<br>') : '';
+                let actionBtns = `
+                    <div style="margin-top:6px;text-align:right;">
+                        <button class="tag-btn tag-btn-bid" onclick="event.stopPropagation(); reviewSetTag(${n.id}, '입찰대상')" style="padding:4px 12px;font-size:12px;">입찰예정</button>
+                        <button class="tag-btn tag-btn-exclude" onclick="event.stopPropagation(); reviewSetTag(${n.id}, '제외')" style="padding:4px 12px;font-size:12px;">제외</button>
+                    </div>
+                `;
+                rows += `<tr class="attach-row">
+                    <td colspan="6" style="padding:6px 12px 8px 12px;border-top:none;background:#f0f4f7;">
+                        <div style="font-size:12px;">
+                            <div style="color:#555;line-height:1.6;">💬 ${memoText || '<span style=\"color:#aaa;\">사유 없음</span>'}</div>
+                            ${actionBtns}
+                        </div>
+                    </td>
+                </tr>`;
+
+                return rows;
             }).join('');
+        }
+
+        async function reviewSetTag(noticeId, tag) {
+            try {
+                const res = await fetch(`/api/notice-tags/${noticeId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tag, memo: '' }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadReviewNotices(); // 리스트 새로고침 (태그 변경되면 목록에서 사라짐)
+                }
+            } catch (e) {
+                console.error('태그 변경 실패:', e);
+            }
         }
 
         function renderReviewPagination(totalPages, current) {

@@ -120,7 +120,7 @@
                 tbody.innerHTML = '<tr><td colspan="6" class="loading">제외된 공고가 없습니다.</td></tr>';
                 return;
             }
-            const canRestore = hasPermission('bid_tag');
+            const canRestore = true;  // 모든 로그인 사용자 복원 가능
             tbody.innerHTML = notices.map(n => {
                 const sourceClass = getSourceClass(n.source);
                 const statusBadge = n.status === 'ongoing'

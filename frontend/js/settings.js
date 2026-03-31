@@ -197,6 +197,7 @@ function renderOrganizations(orgs) {
                 `).join('')}
             </tbody>
         </table>
+        <p style="color:#e74c3c;font-weight:600;font-size:13px;margin-top:12px;">※ 기관목록 추가 삭제시 반드시 개발자와 협의 필요</p>
     `;
 }
 
@@ -254,7 +255,6 @@ function renderUsers(users) {
             <tbody>
                 ${users.map(u => {
                     const perms = [];
-                    if (u.perm_bid_tag) perms.push('입찰');
                     if (u.perm_display) perms.push('표시');
                     if (u.perm_keyword) perms.push('키워드');
                     if (u.perm_org) perms.push('기관');

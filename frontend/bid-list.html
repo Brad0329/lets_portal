@@ -6,7 +6,11 @@
     <title>입찰 예정 공고 - LETS 프로젝트 관리</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/navbar.css">
-    <style>header { display: none; }</style>
+    <style>
+        header { display: none; }
+        .attach-row td { border-top: none !important; }
+        .attach-row:hover { background: #eef3f8 !important; }
+    </style>
 </head>
 <body>
     <nav id="main-navbar"></nav>
@@ -110,7 +114,9 @@
                     ? '<span class="badge badge-ongoing">진행중</span>'
                     : '<span class="badge badge-closed">마감</span>';
                 const tagClass = getTagClass(n.tag);
-                return `<tr onclick="openModal(${n.id})">
+
+                // 공고 행
+                let rows = `<tr onclick="openModal(${n.id})" style="cursor:pointer;">
                     <td><span class="source-badge ${sourceClass}">${escapeHtml(n.source)}</span></td>
                     <td>${escapeHtml(n.title)}</td>
                     <td>${escapeHtml(n.organization || '')}</td>
@@ -118,6 +124,27 @@
                     <td>${statusBadge}</td>
                     <td><span class="tag-badge ${tagClass}">${escapeHtml(n.tag)}</span></td>
                 </tr>`;
+
+                // 첨부파일 전용 행 (attachments → file_url 폴백)
+                let attachContent = '<span style="color:#aaa;">첨부파일 없음</span>';
+                const attachSrc = n.attachments || n.file_url;
+                if (attachSrc) {
+                    try {
+                        const files = JSON.parse(attachSrc);
+                        if (files.length > 0) {
+                            attachContent = files.map(f =>
+                                `<a href="${escapeHtml(f.url)}" target="_blank" onclick="event.stopPropagation()" style="color:#2980b9;text-decoration:none;margin-right:12px;white-space:nowrap;">📎 ${escapeHtml(f.name)}</a>`
+                            ).join('');
+                        }
+                    } catch {}
+                }
+                rows += `<tr class="attach-row" onclick="openModal(${n.id})" style="cursor:pointer;">
+                    <td colspan="6" style="padding:2px 8px 8px 8px;border-top:none;background:#f8f9fa;">
+                        <div style="display:flex;flex-wrap:wrap;gap:4px 0;font-size:12px;">${attachContent}</div>
+                    </td>
+                </tr>`;
+
+                return rows;
             }).join('');
         }
 

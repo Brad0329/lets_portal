@@ -556,9 +556,9 @@ def set_notice_tag(request: Request, notice_id: int, body: TagRequest):
     if body.tag not in valid_tags:
         return JSONResponse(status_code=400, content={"error": f"유효하지 않은 태그입니다. ({', '.join(valid_tags)})"})
 
-    # 검토요청은 모든 로그인 사용자, 나머지는 관리자/perm_bid_tag 권한 필요
-    if body.tag != "검토요청" and not has_permission(user, "bid_tag"):
-        raise __import__("fastapi").HTTPException(status_code=403, detail="입찰예정/제외 관리 권한이 없습니다.")
+    # 낙찰/유찰은 관리자/perm_bid_tag 권한 필요, 검토요청/입찰대상/제외는 모든 로그인 사용자
+    if body.tag in ("낙찰", "유찰") and not has_permission(user, "bid_tag"):
+        raise __import__("fastapi").HTTPException(status_code=403, detail="낙찰/유찰 태그 권한이 없습니다.")
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -573,7 +573,28 @@ def set_notice_tag(request: Request, notice_id: int, body: TagRequest):
     """, (notice_id, body.tag, user["id"], body.memo))
     conn.commit()
     conn.close()
-    return {"success": True, "notice_id": notice_id, "tag": body.tag}
+
+    # 검토요청/입찰대상 시 첨부파일 백그라운드 수집
+    attachment_scraping = False
+    if body.tag in ("검토요청", "입찰대상"):
+        conn2 = get_connection()
+        cur2 = conn2.cursor()
+        cur2.execute("SELECT source, detail_url, url, attachments FROM bid_notices WHERE id=?", (notice_id,))
+        row = cur2.fetchone()
+        conn2.close()
+
+        if row:
+            source = row["source"]
+            detail = row["detail_url"] or row["url"]
+            has_attach = row["attachments"] and row["attachments"] not in ("", "[]")
+
+            if source != "나라장터" and not has_attach and detail:
+                import threading as _threading
+                from collectors.attachment_scraper import scrape_attachments_bg
+                _threading.Thread(target=scrape_attachments_bg, args=(notice_id, source, detail), daemon=True).start()
+                attachment_scraping = True
+
+    return {"success": True, "notice_id": notice_id, "tag": body.tag, "attachment_scraping": attachment_scraping}
 
 
 @app.delete("/api/notice-tags/{notice_id}")
@@ -588,9 +609,9 @@ def remove_notice_tag(request: Request, notice_id: int):
     conn.close()
 
     if tag_row:
-        # 검토요청 태그는 본인이 해제 가능, 나머지는 관리자/perm_bid_tag
-        if tag_row["tag"] != "검토요청" and not has_permission(user, "bid_tag"):
-            raise __import__("fastapi").HTTPException(status_code=403, detail="입찰예정/제외 관리 권한이 없습니다.")
+        # 낙찰/유찰 태그 해제는 관리자/perm_bid_tag 필요
+        if tag_row["tag"] in ("낙찰", "유찰") and not has_permission(user, "bid_tag"):
+            raise __import__("fastapi").HTTPException(status_code=403, detail="낙찰/유찰 태그 해제 권한이 없습니다.")
 
     conn = get_connection()
     cursor = conn.cursor()
