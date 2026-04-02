@@ -7,4 +7,5 @@ node_modules/
 .claude/
 build/
 dist/
+release/
 *.spec
