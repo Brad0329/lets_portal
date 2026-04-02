@@ -281,41 +281,6 @@ def init_db():
     except Exception:
         pass  # 이미 존재하면 무시
 
-    # 공통 키워드 초기 등록 (키워드가 하나도 없을 때만)
-    cursor.execute("SELECT COUNT(*) FROM keywords WHERE source_id IS NULL")
-    if cursor.fetchone()[0] == 0:
-        default_keywords = {
-            "나라장터 1": [
-                "CEO", "귀촌", "글로벌", "농촌", "두레", "로컬크리에이터",
-                "상권", "스타트업", "신활력", "어촌", "어항", "코디네이터"
-            ],
-            "나라장터 2": [
-                "IR", "MICE", "강좌", "국방", "리그", "멘토링",
-                "문화", "벤처", "심리", "재기", "재도전", "패키지", "힐링"
-            ],
-            "나라장터 3": [
-                "ESG", "경진대회", "공모전", "관광", "교육", "스케일업",
-                "아이디어", "아카데미", "워크숍", "창업", "챌린지", "캠프",
-                "컨설팅", "해커톤", "활성화"
-            ],
-            "나라장터 4": [
-                "startup", "비즈니스", "사업화", "상담", "성과공유회", "스마트",
-                "액셀러(액셀러레이팅)", "지원", "콘텐츠", "투자", "특성화",
-                "판로개척", "환경"
-            ],
-            "나라장터 5": [
-                "RISE", "기획자", "네트워킹", "동아리", "라이즈", "부트",
-                "비즈쿨", "사업계획", "서부내륙권", "시니어", "여성", "육성",
-                "재학생", "중장년", "창조", "청년"
-            ],
-        }
-        for group, keywords in default_keywords.items():
-            for kw in keywords:
-                cursor.execute(
-                    "INSERT INTO keywords (keyword, keyword_group, is_active) VALUES (?, ?, 1)",
-                    (kw, group),
-                )
-
     conn.commit()
     conn.close()
 

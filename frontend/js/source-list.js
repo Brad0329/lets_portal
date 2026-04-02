@@ -142,6 +142,12 @@ async function addCommonKeyword() {
         const resp = await fetch(`/api/keywords/common?keyword=${encodeURIComponent(keyword)}`, { method: 'POST' });
         const data = await resp.json();
         if (data.error) { alert(data.error); return; }
+        // 다건 결과 안내
+        if (data.added_count !== undefined) {
+            let msg = `${data.added_count}개 추가 완료`;
+            if (data.skipped_count > 0) msg += `, ${data.skipped_count}개 중복 건너뜀 (${data.skipped.join(', ')})`;
+            alert(msg);
+        }
         input.value = '';
         await loadCommonKeywords();
         renderCommonKeywords();

@@ -973,27 +973,45 @@ def add_common_keyword(
     keyword: str = Query(...),
     keyword_group: str = Query(default="사용자 추가"),
 ):
-    """공통 키워드 추가"""
+    """공통 키워드 추가 (콤마로 여러 개 동시 입력 가능)"""
     user = require_login(request)
     if not has_permission(user, "keyword"):
         raise __import__("fastapi").HTTPException(status_code=403, detail="키워드 관리 권한이 없습니다.")
 
+    # 콤마로 분리하여 여러 개 처리
+    raw_keywords = [kw.strip() for kw in keyword.split(",") if kw.strip()]
+    if not raw_keywords:
+        return JSONResponse(status_code=400, content={"error": "키워드를 입력해주세요."})
+
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM keywords WHERE keyword=? AND source_id IS NULL", (keyword.strip(),))
-    if cursor.fetchone():
-        conn.close()
-        return JSONResponse(status_code=400, content={"error": f"'{keyword}' 공통 키워드가 이미 존재합니다."})
-    cursor.execute(
-        "INSERT INTO keywords (keyword, keyword_group, is_active, source_id) VALUES (?, ?, 1, NULL)",
-        (keyword.strip(), keyword_group.strip()),
-    )
+    added = []
+    skipped = []
+    for kw in raw_keywords:
+        cursor.execute("SELECT id FROM keywords WHERE keyword=? AND source_id IS NULL", (kw,))
+        if cursor.fetchone():
+            skipped.append(kw)
+            continue
+        cursor.execute(
+            "INSERT INTO keywords (keyword, keyword_group, is_active, source_id) VALUES (?, ?, 1, NULL)",
+            (kw, keyword_group.strip()),
+        )
+        added.append(kw)
     conn.commit()
-    new_id = cursor.lastrowid
-    cursor.execute("SELECT * FROM keywords WHERE id=?", (new_id,))
-    row = cursor.fetchone()
     conn.close()
-    return dict(row)
+
+    # 단건이면 기존 호환, 다건이면 요약 반환
+    if len(raw_keywords) == 1:
+        if skipped:
+            return JSONResponse(status_code=400, content={"error": f"'{skipped[0]}' 공통 키워드가 이미 존재합니다."})
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM keywords WHERE keyword=? AND source_id IS NULL", (added[0],))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row)
+    else:
+        return {"added": added, "skipped": skipped, "added_count": len(added), "skipped_count": len(skipped)}
 
 
 @app.get("/api/sources/{source_id}/keywords")

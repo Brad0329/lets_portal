@@ -343,8 +343,11 @@
             <h2>공통 키워드 (모든 출처에 적용)</h2>
             <div id="common-keywords" class="kw-chips"></div>
             <div class="kw-add-inline" style="margin-top: 8px;">
-                <input type="text" id="common-kw-input" placeholder="키워드 입력" onkeydown="if(event.key==='Enter') addCommonKeyword()" />
-                <button class="kw-add-btn" onclick="addCommonKeyword()">+ 추가</button>
+                <textarea id="common-kw-input" placeholder="키워드 입력" rows="3" style="width: 600px; resize: vertical; font-size: 14px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                <div style="margin-top: 4px;">
+                    <button class="kw-add-btn" onclick="addCommonKeyword()">+ 추가</button>
+                </div>
+                <div style="margin-top: 4px; color: #888; font-size: 12px;">콤마를 구분자로 단어를 입력하세요 (예시: 컨설팅, 벤처, 창업, 교육)</div>
             </div>
         </div>
     </main>
