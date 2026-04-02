@@ -18,11 +18,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import get_connection
+from config import COLLECTORS_DIR
 
 logger = logging.getLogger(__name__)
 
 # 설정 파일 경로
-CONFIGS_PATH = os.path.join(os.path.dirname(__file__), "scraper_configs.json")
+CONFIGS_PATH = os.path.join(COLLECTORS_DIR, "scraper_configs.json")
 
 # 요청 기본 헤더
 DEFAULT_HEADERS = {
