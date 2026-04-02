@@ -350,6 +350,17 @@
                 <div style="margin-top: 4px; color: #888; font-size: 12px;">콤마를 구분자로 단어를 입력하세요 (예시: 컨설팅, 벤처, 창업, 교육)</div>
             </div>
         </div>
+
+        <!-- 공고 데이터 삭제 -->
+        <div class="common-keywords-section" id="delete-section" style="margin-top: 24px; border-top: 2px solid #e0e0e0; padding-top: 16px;">
+            <h2>공고 데이터 삭제</h2>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+                <span>입찰공고게시일</span>
+                <input type="date" id="delete-before-date" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" />
+                <span>이전 데이터</span>
+                <button onclick="deleteOldNotices()" style="padding: 6px 16px; background: #e53935; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">삭제</button>
+            </div>
+        </div>
     </main>
 
     <script src="/js/auth.js"></script>

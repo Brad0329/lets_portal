@@ -1129,6 +1129,42 @@ def collect_single_scraper(
         return {"source": source_name, "collected": 0, "matched": 0, "inserted": 0, "updated": 0, "error": str(e)}
 
 
+# ─── 공고 데이터 삭제 ──────────────────────────
+
+@app.delete("/api/notices/old")
+def delete_old_notices(request: Request, before_date: str = Query(...)):
+    """입찰공고게시일 기준으로 이전 데이터 삭제 (태그 있는 공고 보존)"""
+    user = require_login(request)
+    if user["role"] != "admin":
+        raise __import__("fastapi").HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 삭제 대상 건수 조회 (태그 있는 공고 제외)
+    cursor.execute("""
+        SELECT COUNT(*) FROM bid_notices
+        WHERE start_date <= ?
+        AND id NOT IN (SELECT notice_id FROM notice_tags)
+    """, (before_date,))
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+        conn.close()
+        return {"deleted": 0, "message": "삭제할 데이터가 없습니다."}
+
+    # 삭제 실행
+    cursor.execute("""
+        DELETE FROM bid_notices
+        WHERE start_date <= ?
+        AND id NOT IN (SELECT notice_id FROM notice_tags)
+    """, (before_date,))
+    conn.commit()
+    conn.close()
+
+    return {"deleted": count, "message": f"{before_date} 이전 공고 {count}건 삭제 완료 (태그 공고 보존)"}
+
+
 # ─── 프론트엔드 정적파일 ──────────────────────────
 
 from config import FRONTEND_DIR
