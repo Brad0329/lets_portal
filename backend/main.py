@@ -833,7 +833,8 @@ def _build_scraper_url_map() -> dict:
     """scraper_configs.json + 하드코딩 소스에서 기관명→URL 매핑 생성"""
     import json as _json
     url_map = {}
-    configs_path = os.path.join(os.path.dirname(__file__), "collectors", "scraper_configs.json")
+    from config import COLLECTORS_DIR
+    configs_path = os.path.join(COLLECTORS_DIR, "scraper_configs.json")
     if os.path.exists(configs_path):
         with open(configs_path, "r", encoding="utf-8") as f:
             for cfg in _json.load(f):
@@ -1112,7 +1113,8 @@ def collect_single_scraper(
 
 # ─── 프론트엔드 정적파일 ──────────────────────────
 
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
+from config import FRONTEND_DIR
+frontend_dir = FRONTEND_DIR
 if os.path.isdir(frontend_dir):
     # 명시적 HTML 페이지 라우트
     @app.get("/login.html")
@@ -1148,4 +1150,5 @@ if os.path.isdir(frontend_dir):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    # exe에서는 문자열("main:app") 대신 app 객체 직접 전달
+    uvicorn.run(app, host="0.0.0.0", port=8000)
