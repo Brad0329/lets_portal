@@ -1169,4 +1169,6 @@ if os.path.isdir(frontend_dir):
 if __name__ == "__main__":
     import uvicorn
     # exe에서는 문자열("main:app") 대신 app 객체 직접 전달
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", "8000"))
+    print(f"\n  LETS 서버 시작: http://localhost:{port}\n")
+    uvicorn.run(app, host="0.0.0.0", port=port)
