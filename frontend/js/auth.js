@@ -72,7 +72,7 @@ function renderNavbar() {
             <div class="sidebar-bottom">
                 ${bottomHtml}
                 <div class="sidebar-user">
-                    <span class="user-info">${escapeHtmlNav(currentUser.name)} <span class="user-role">${currentUser.role === 'admin' ? '관리자' : '실무자'}</span></span>
+                    <span class="user-info">${escapeHtml(currentUser.name)} <span class="user-role">${currentUser.role === 'admin' ? '관리자' : '실무자'}</span></span>
                     <button onclick="doLogout()" class="btn-logout">로그아웃</button>
                 </div>
             </div>
@@ -83,9 +83,4 @@ function renderNavbar() {
     document.body.classList.add('has-sidebar');
 }
 
-function escapeHtmlNav(text) {
-    if (!text) return '';
-    const d = document.createElement('div');
-    d.textContent = text;
-    return d.innerHTML;
-}
+// escapeHtml은 utils.js로 이동

@@ -458,11 +458,35 @@ function formatDateTime(dt) {
     } catch { return dt; }
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// escapeHtml은 utils.js로 이동
+
+// ─── 공고 데이터 삭제 ──────────────────────────
+
+async function deleteOldNotices() {
+    const dateInput = document.getElementById('delete-before-date');
+    const beforeDate = dateInput.value;
+    if (!beforeDate) {
+        alert('날짜를 선택해주세요.');
+        return;
+    }
+
+    const confirmed = confirm(
+        `${beforeDate} 포함 이전 데이터가 삭제됩니다.\n\n단, 검토요청, 입찰예정, 제외 공고는 삭제되지 않습니다.\n\n진행하시겠습니까?`
+    );
+    if (!confirmed) return;
+
+    try {
+        const resp = await fetch(`/api/notices/old?before_date=${beforeDate}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(data.message);
+            dateInput.value = '';
+        } else {
+            alert(data.detail || '삭제 실패');
+        }
+    } catch (e) {
+        alert('삭제 실패: ' + e.message);
+    }
 }
 
 // ─── 공고 데이터 삭제 ──────────────────────────

@@ -415,11 +415,4 @@ async function changeMyPw() {
     }
 }
 
-
-// ─── 유틸 ────────────────────────────────────
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// ─── 유틸 (escapeHtml은 utils.js로 이동) ───
