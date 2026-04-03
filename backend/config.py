@@ -25,3 +25,9 @@ KSTARTUP_API_BASE = "http://apis.data.go.kr/B552735/kisedKstartupService01"
 DB_PATH = os.path.join(BASE_DIR, "data", "portal.db")
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 COLLECTORS_DIR = os.path.join(BASE_DIR, "backend", "collectors") if not getattr(sys, 'frozen', False) else os.path.join(BASE_DIR, "collectors")
+
+# ─── 인증/세션 기본값 ──────────────────────────────
+DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin1234")
+DEFAULT_USER_PASSWORD = os.getenv("DEFAULT_USER_PASSWORD", "1234")
+SESSION_HOURS = int(os.getenv("SESSION_HOURS", "24"))
+PORT = int(os.getenv("PORT", "8000"))

@@ -458,12 +458,7 @@ function formatDateTime(dt) {
     } catch { return dt; }
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml은 utils.js로 이동
 
 // ─── 공고 데이터 삭제 ──────────────────────────
 

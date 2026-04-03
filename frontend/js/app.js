@@ -159,25 +159,7 @@ function renderNotices(notices) {
 
 // ─── 페이지네이션 ────────────────────────────
 function renderPagination(totalPages, current) {
-    const div = document.getElementById('pagination');
-    if (totalPages <= 1) { div.innerHTML = ''; return; }
-
-    let html = '';
-
-    if (current > 1)
-        html += `<button onclick="goPage(${current - 1})">◀</button>`;
-
-    const start = Math.max(1, current - 4);
-    const end = Math.min(totalPages, current + 4);
-
-    for (let i = start; i <= end; i++) {
-        html += `<button class="${i === current ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
-    }
-
-    if (current < totalPages)
-        html += `<button onclick="goPage(${current + 1})">▶</button>`;
-
-    div.innerHTML = html;
+    renderPaginationGeneric('pagination', totalPages, current, 'goPage');
 }
 
 function goPage(page) {
@@ -432,11 +414,6 @@ async function removeTag(noticeId) {
     }
 }
 
-function getTagClass(tag) {
-    const map = { '입찰대상': 'tag-bid', '제외': 'tag-exclude', '검토요청': 'tag-review', '낙찰': 'tag-won', '유찰': 'tag-lost' };
-    return map[tag] || '';
-}
-
 function closeModal() {
     document.getElementById('modal-overlay').classList.remove('active');
 }
@@ -446,24 +423,4 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
 
-// ─── 유틸 ────────────────────────────────────
-function getSourceClass(source) {
-    if (source === 'K-Startup') return 'source-kstartup';
-    if (source === '중소벤처기업부') return 'source-mss';
-    if (source === '나라장터') return 'source-nara';
-    return '';
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function formatPrice(val) {
-    if (!val) return '';
-    const num = Number(val);
-    if (isNaN(num)) return val;
-    return num.toLocaleString('ko-KR');
-}
+// ─── 유틸 (escapeHtml, getSourceClass, getTagClass, formatPrice는 utils.js로 이동) ───
