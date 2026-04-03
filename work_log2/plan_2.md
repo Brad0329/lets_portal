@@ -626,16 +626,39 @@ AI:          Claude API (Anthropic SDK)
 | `users` | 사용자 계정 | username, password_hash, role, permissions |
 | `nara_interest_categories` | 나라장터 관심 중분류 | category_name, parent_category, is_active |
 
-### 배포/납품 방식 (검토 중)
+### 배포/납품 방식 — PyInstaller exe 채택 ✅
 
-| 방법 | 설명 |
+**결정:** PyInstaller exe 패키징 (2026-04-02)
+
+| 항목 | 내용 |
 |------|------|
-| **PyInstaller exe** | 백엔드를 exe로 패키징, Python 설치 불필요, 폴더째 전달 |
-| **서버 호스팅 (SaaS)** | 클라우드 운영, URL만 제공, 소스 노출 없음 |
-| **Docker** | 컨테이너 배포 |
+| 빌드 결과 | `lets_server.exe` (약 72MB) |
+| 납품 폴더 | `release/LETSEDU_DEPLOY/` |
+| 포트 | `.env`의 `PORT` 환경변수 (기본값 8000, 현재 8001) |
+| 접속 | 같은 네트워크에서 `http://서버IP:포트` |
 
-- 사내 LAN 배포: `main.exe` 실행 → 같은 네트워크에서 `http://서버IP:8000` 접속
-- 외부 배포: 클라우드 서버 (AWS/NCP 등) + 도메인 연결
+**납품 폴더 구조:**
+```
+LETSEDU_DEPLOY/
+├── lets_server.exe         ← 서버 (Python 설치 불필요)
+├── .env                    ← API 키 + PORT 설정
+├── main_manual.md          ← 설치/사용 매뉴얼
+├── 초기키워드.txt           ← 콤마 입력용 키워드 목록
+├── frontend/               ← 화면 (HTML/JS/CSS)
+├── data/                   ← portal.db (첫 실행 시 자동 생성)
+└── collectors/
+    └── scraper_configs.json
+```
+
+**Git 브랜치 전략:**
+```
+master     → 개발용 (AI 등 새 기능)
+release/v1 → 납품용 안정 버전 (버그 수정만)
+v1.0 태그  → 최초 분기 시점
+```
+
+- exe 빌드는 `release/v1` 브랜치에서 실행
+- 공통 수정은 cherry-pick으로 양쪽 반영, AI 등 신규 기능은 master만
 
 ## 7. 미정/논의 필요 사항
 
@@ -646,7 +669,7 @@ AI:          Claude API (Anthropic SDK)
 - [ ] 입찰 이력/통계 기능 범위
 - [ ] 프론트엔드 프레임워크 변경 여부 (Vanilla JS 유지 vs React 전환)
 - [ ] 기업마당(Bizinfo) API 키 신청 여부 (넓은 커버리지, 중기부/소상공인 등 통합)
-- [ ] 배포/납품 방식 결정 (PyInstaller exe vs 클라우드 호스팅 vs Docker)
+- [x] 배포/납품 방식 결정 → PyInstaller exe 채택 (release/v1 브랜치)
 
 ## 8. 이전 계획 (plan.md) 완료 이력
 
