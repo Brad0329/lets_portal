@@ -52,6 +52,7 @@
                         <th class="col-date">마감일</th>
                         <th class="col-status">상태</th>
                         <th style="width:80px">요청자</th>
+                        <th style="width:70px">AI</th>
                     </tr>
                 </thead>
                 <tbody id="notices-body">
@@ -89,7 +90,7 @@
 
             const params = new URLSearchParams({ tag: '검토요청', q, source, sort, page: reviewPage, size: 20 });
             const tbody = document.getElementById('notices-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="loading">검색 중...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">검색 중...</td></tr>';
 
             try {
                 const res = await fetch(`/api/notices/tagged?${params}`);
@@ -105,7 +106,7 @@
         function renderReviewNotices(notices) {
             const tbody = document.getElementById('notices-body');
             if (!notices || notices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading">검토요청 공고가 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">검토요청 공고가 없습니다.</td></tr>';
                 return;
             }
             tbody.innerHTML = notices.map(n => {
@@ -113,6 +114,20 @@
                 const statusBadge = n.status === 'ongoing'
                     ? '<span class="badge badge-ongoing">진행중</span>'
                     : '<span class="badge badge-closed">마감</span>';
+
+                // AI 분석 상태
+                let aiCell = '';
+                if (n.ai_status === 'analyzing') {
+                    aiCell = '<span style="color:#e67e22;font-size:12px;">분석중...</span>';
+                } else if (n.ai_status === 'done' && n.ai_match_rate != null) {
+                    const rate = Math.round(n.ai_match_rate);
+                    const color = rate >= 70 ? '#27ae60' : rate >= 50 ? '#e67e22' : '#e74c3c';
+                    aiCell = `<span onclick="event.stopPropagation(); showAnalysis(${n.id})" style="cursor:pointer;color:${color};font-weight:700;font-size:13px;" title="클릭하여 상세 보기">${rate}%</span>`;
+                } else if (n.ai_status === 'done') {
+                    aiCell = `<span onclick="event.stopPropagation(); showAnalysis(${n.id})" style="cursor:pointer;color:#2980b9;font-size:12px;" title="클릭하여 상세 보기">결과</span>`;
+                } else {
+                    aiCell = `<button onclick="event.stopPropagation(); runAiAnalysis(${n.id}, this)" style="padding:2px 8px;font-size:11px;border:1px solid #3498db;border-radius:4px;background:#fff;color:#3498db;cursor:pointer;">분석</button>`;
+                }
 
                 // 공고 행
                 let rows = `<tr onclick="openModal(${n.id})" style="cursor:pointer;">
@@ -122,6 +137,7 @@
                     <td>${escapeHtml(n.end_date || '-')}</td>
                     <td>${statusBadge}</td>
                     <td>${escapeHtml(n.tagged_by_name || '-')}</td>
+                    <td style="text-align:center">${aiCell}</td>
                 </tr>`;
 
                 // 첨부파일 전용 행 (attachments → file_url 폴백)
@@ -198,6 +214,120 @@
             reviewPage = page;
             loadReviewNotices();
             window.scrollTo(0, 0);
+        }
+
+        // ─── AI 분석 ───────────────────────────
+        async function runAiAnalysis(noticeId, btn) {
+            btn.disabled = true;
+            btn.textContent = '분석중...';
+            btn.style.color = '#e67e22';
+
+            try {
+                const res = await fetch(`/api/ai/analyze/${noticeId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    loadReviewNotices();
+                    // 결과 바로 표시
+                    showAnalysis(noticeId);
+                } else {
+                    alert(data.message || data.error || 'AI 분석 실패');
+                    btn.disabled = false;
+                    btn.textContent = '분석';
+                    btn.style.color = '#3498db';
+                }
+            } catch (e) {
+                alert('AI 분석 실패: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = '분석';
+                btn.style.color = '#3498db';
+            }
+        }
+
+        async function showAnalysis(noticeId) {
+            try {
+                const res = await fetch(`/api/ai/analyses/${noticeId}`);
+                const data = await res.json();
+                renderAnalysisModal(data);
+            } catch (e) {
+                alert('분석 결과 로드 실패');
+            }
+        }
+
+        function renderAnalysisModal(data) {
+            const overlay = document.getElementById('modal-overlay');
+            const body = document.getElementById('modal-body');
+
+            let html = `<h3 style="margin:0 0 12px;font-size:16px;color:#1a5276">${escapeHtml(data.notice_title)}</h3>`;
+
+            if (!data.analyses || data.analyses.length === 0) {
+                html += '<p style="color:#aaa;">분석 결과가 없습니다.</p>';
+            } else {
+                for (const a of data.analyses) {
+                    if (a.mode === 'full') {
+                        const rateColor = a.match_rate >= 70 ? '#27ae60' : a.match_rate >= 50 ? '#e67e22' : '#e74c3c';
+                        html += `<div style="border:1px solid #d0d5dd;border-radius:8px;padding:16px;margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <strong>${a.analysis_seq}차 분석</strong>
+                                <span style="font-size:13px;color:#888">${(a.created_at||'').slice(0,16)}</span>
+                            </div>
+                            <div style="text-align:center;margin-bottom:12px;">
+                                <span style="font-size:32px;font-weight:700;color:${rateColor}">${Math.round(a.match_rate||0)}%</span>
+                                <div style="font-size:13px;color:#555;">매칭률 (${a.total_score||0}/${a.total_max_score||0}점)</div>
+                            </div>`;
+
+                        // 항목별 테이블
+                        if (a.items && a.items.length > 0) {
+                            html += `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
+                                <thead><tr style="background:#f0f4f7;">
+                                    <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;">평가항목</th>
+                                    <th style="padding:6px 8px;width:50px;border:1px solid #ddd;">배점</th>
+                                    <th style="padding:6px 8px;width:50px;border:1px solid #ddd;">예상</th>
+                                    <th style="padding:6px 8px;border:1px solid #ddd;">근거</th>
+                                    <th style="padding:6px 8px;border:1px solid #ddd;">보완</th>
+                                </tr></thead><tbody>`;
+                            for (const item of a.items) {
+                                html += `<tr>
+                                    <td style="padding:6px 8px;border:1px solid #eee;">${escapeHtml(item.item||'')}</td>
+                                    <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${item.max_score||0}</td>
+                                    <td style="padding:6px 8px;border:1px solid #eee;text-align:center;font-weight:600;">${item.expected_score||0}</td>
+                                    <td style="padding:6px 8px;border:1px solid #eee;font-size:12px;">${escapeHtml(item.rationale||'')}</td>
+                                    <td style="padding:6px 8px;border:1px solid #eee;font-size:12px;color:#e67e22;">${escapeHtml(item.improvement||'-')}</td>
+                                </tr>`;
+                            }
+                            html += '</tbody></table>';
+                        }
+
+                        html += `<div style="background:#f8f9fa;padding:10px 12px;border-radius:6px;font-size:13px;">
+                            <strong>AI 의견:</strong> ${escapeHtml(a.recommendation||'')} — ${escapeHtml(a.items?.[0]?.rationale ? '' : '')}
+                        </div>
+                        <div style="text-align:right;font-size:11px;color:#aaa;margin-top:6px;">비용: ${(a.cost_krw||0).toFixed(0)}원</div>
+                        </div>`;
+
+                    } else {
+                        // 간이 모드
+                        const gradeColor = a.grade === '상' ? '#27ae60' : a.grade === '중' ? '#e67e22' : '#e74c3c';
+                        html += `<div style="border:1px solid #d0d5dd;border-radius:8px;padding:16px;margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <strong>${a.analysis_seq}차 분석 (간이)</strong>
+                                <span style="font-size:13px;color:#888">${(a.created_at||'').slice(0,16)}</span>
+                            </div>
+                            <div style="text-align:center;margin-bottom:12px;">
+                                <span style="font-size:32px;font-weight:700;color:${gradeColor}">${escapeHtml(a.grade||'?')}</span>
+                                <div style="font-size:13px;color:#555;">적합도 등급</div>
+                            </div>
+                            <div style="background:#f8f9fa;padding:10px 12px;border-radius:6px;font-size:13px;">
+                                ${escapeHtml(a.reason||'')}
+                            </div>
+                            <div style="text-align:right;font-size:11px;color:#aaa;margin-top:6px;">
+                                ${escapeHtml(a.recommendation||'')} | 비용: ${(a.cost_krw||0).toFixed(0)}원
+                            </div>
+                        </div>`;
+                    }
+                }
+            }
+
+            body.innerHTML = html;
+            overlay.classList.add('active');
         }
     </script>
 </body>

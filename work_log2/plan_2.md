@@ -543,167 +543,70 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [ ] 파일 업로드/관리 (서류, 회의록, 참고자료 — 직접 업로드)
 - [ ] 프로젝트 목록 페이지 (진행중/완료 필터)
 
-### Phase C: AI 연동 (Claude API)
+### Phase C: AI 공고 분석 (Claude API) — 설계 확정 2026-04-16
+
+> 상세 설계: `work_log2/design_phase_c_ai.md`
 
 #### 개요
-검토요청된 공고를 AI가 분석하여 입찰 검토를 보조하는 기능.
-회사 프로필 + 첨부파일(PDF/HWPX/DOCX) + 공고 DB 데이터를 Claude API에 전달하여
-"우리 회사에 맞는 공고인가?" 등 판단성 질문에 답변.
-첨부파일 처리: PDF는 Claude API 직접 전달, HWPX는 hwpxskill로 텍스트 추출, HWP(구형)는 변환 시도.
+검토요청된 공고의 첨부파일을 파싱하여 평가기준/자격요건을 추출하고,
+회사 프로필과 비교하여 **입찰 적합도 매칭 점수**를 산출한다.
+2-모델 구성: 문서 파싱=Haiku, 매칭 분석=Sonnet (1건당 ~100원).
+다른 AI 모델 추가 가능한 구조. bidwatch 이식 대비 모듈 분리 설계.
 
-#### 의존 관계
+#### 흐름
 ```
-C-1 (회사 프로필)  ──┐
-                     ├──→  C-3 (AI 채팅)
-C-2 (첨부파일 처리) ──┘
-```
-
-#### C-1: 회사 프로필 관리 화면
-설정 메뉴에 "회사 프로필" 항목 추가. 입찰 경쟁력 기준으로 작성.
-관리자가 목차별 섹션을 편집하고, `data/company_profile.md`로 저장.
-AI 프롬프트에 그대로 삽입하여 매칭 판단의 기준으로 활용.
-
-**프로필 목차:**
-```
-1. 기본 정보 — 회사명, 설립일, 소재지, 대표자, 업종/업태
-2. 핵심 사업 분야 — 주력 분야 / 가능 분야 / 불가·비선호 분야
-3. 핵심 역량 (경쟁 우위) — 차별점, 방법론, 독자 솔루션, 특허/저작권
-4. 인력 현황 — 핵심 인력 프로필, 분야별 투입 가능 인력, 외부 협력 네트워크
-5. 주요 수행 실적 — 최근 3년 과제 목록(기관/사업명/금액/역할), 대표 성공 사례
-6. 핵심 고객 및 레퍼런스 — 주요 거래 기관, 반복 수주처, 기관별 관계 이력
-7. 재무/규모 — 매출 규모, 신용등급, 동시 수행 가능 과제 수
-8. 우대 가점 요소 — 지역 소재, 사회적기업, 여성기업, ESG 인증 등
-9. 선호 조건 — 선호 사업 규모(최소~최대), 기간, 발주기관 유형, 컨소시엄 선호
-10. 과거 입찰 교훈 — 탈락 사유 분석, 약점 인식, 경쟁사 대비 약점
+검토요청 리스트 → [AI 분석] 버튼
+  → 첨부파일 다운로드 (data/attachments/{notice_id}/)
+  → 문서 파싱 (Haiku) → 평가기준/자격요건 구조화
+  → 매칭 분석 (Sonnet) → 프로필 vs 평가기준 → 항목별 점수/근거/보완
+  → 결과 DB 저장 + 크레딧 차감
+  → [프로필 수정 후 재분석] → 2차 분석 (변경사항 비고 표시)
 ```
 
-**구현 항목:**
-- [ ] 설정 메뉴에 "회사 프로필" 항목 추가 (관리자 전용)
-- [ ] 목차별 섹션 편집 UI (섹션별 textarea)
-- [ ] `data/company_profile.md` 파일 저장/로드 API
-- [ ] 프로필 업데이트 이력 관리 (수정일시 기록)
+#### C-1: 문서 파싱 모듈 ✅
+`backend/utils/file_parser.py` — 향후 독립 패키지(`lets_doc_parser`) 분리 대비
+- [x] ParseResult 데이터 클래스 + extract_text() 진입점
+- [x] PDF 파서 (pdfplumber) — Claude API base64 직접 전달도 지원
+- [x] HWPX 파서 (lxml — XML 직접 파싱, 마크다운 변환, 표 추출)
+- [x] DOCX 파서 (python-docx)
+- [x] HWP(구형) 변환 시도 (pywin32, 실패 시 스킵)
+- [x] 실제 공고 첨부파일로 파싱 테스트 (PDF 12건, HWPX 1건, DOCX 1건)
 
-#### C-2: 첨부파일 처리 백그라운드 프로세스
-검토요청 태그 설정 시 백그라운드에서 첨부파일을 다운로드하고 AI 전달용으로 처리.
-기존 태그 저장(즉시) + 첨부 URL 수집(B-1 완료)과 분리된 비동기 프로세스.
+#### C-2: 프로필 항목 확정 + UI ✅
+파싱 결과로 평가기준 패턴을 분석한 후 프로필 항목을 확정.
+- [x] 공고 12건 첨부파일 파싱 → 평가기준 키워드 빈도 분석
+- [x] 프로필 입력 항목 확정 (16개 필드, 6개 카테고리)
+- [x] company_profile 테이블 (유연한 key-value 구조)
+- [x] 설정 메뉴에 프로필 입력 UI (JSON 배열 테이블 편집 포함)
 
-**처리 흐름:**
-```
-[Step 1] 검토요청 버튼 클릭 → 태그 + 메모 저장 (즉시, 기존과 동일)
-[Step 2] 백그라운드 프로세스 → 첨부파일 다운로드 → 포맷별 처리
-[Step 3] 검토요청 리스트 → 처리 상태 표시 (처리중/완료/실패)
-```
+#### C-3: AI 분석 엔진 ✅
+다중 모델 교체 가능 구조 (BaseAIClient 추상 인터페이스).
+- [x] `backend/ai/base.py` — BaseAIClient 인터페이스 + AIResponse
+- [x] `backend/ai/claude_client.py` — Haiku/Sonnet 구현 (PDF base64 직접 전달 포함)
+- [x] `backend/ai/analyzer.py` — 오케스트레이터 (다운로드→파싱→매칭→저장)
+- [x] `backend/ai/cost.py` — 비용 산출/차감 로직
+- [x] `backend/prompts/*.md` — 파싱/매칭/간이 프롬프트 3개
+- [x] 간이 모드: 평가기준 미첨부 공고 → 적합도 상/중/하 판단
 
-**파일 저장 구조:**
-```
-data/attachments/{notice_id}/
-  ├── 제안요청서.pdf          (원본 PDF)
-  ├── 사업안내서.hwpx         (원본 HWPX)
-  ├── 사업안내서.md           (HWPX에서 텍스트 추출본)
-  └── metadata.json          (파일 목록, 처리 상태, 일시)
-```
+#### C-4: 분석 결과 저장 + UI ✅
+- [x] ai_analyses 테이블 (차수 관리 — 1차/2차/.., 프로필 스냅샷)
+- [x] ai_credits 테이블 (충전/차감, 모델별 토큰/비용 기록)
+- [x] ai_config 테이블 (모델/환율 설정)
+- [x] `backend/routers/ai.py` — API 엔드포인트 9개
+- [x] 검토요청 리스트에 [AI 분석] 버튼 + 매칭률% 표시
+- [x] 분석 결과 표시 UI (항목별 점수/근거/보완 테이블)
+- [x] .env에 CLAUDE_API_KEY 관리
+- [ ] [프로필 수정 후 재분석] 팝업 → 프로필 반영 여부 확인
+- [ ] 크레딧 충전/사용이력 UI (설정 페이지)
 
-**포맷별 처리 전략 (우선순위):**
-```
-첨부파일 다운로드
-  ├── PDF → 그대로 보관 (Claude API에 직접 전달 가능)
-  ├── HWPX → hwpxskill로 텍스트/마크다운 추출 → .md 저장
-  │          (XML 직접 파싱이라 표 데이터도 추출 가능)
-  ├── HWP(구형) → 변환 시도 (아래 순서)
-  │   ├── pywin32 + 한컴오피스 COM (서버에 한컴오피스 설치 시)
-  │   ├── LibreOffice CLI 변환 (호환성 70~80%)
-  │   └── 변환 실패 → 스킵
-  ├── DOCX → python-docx로 텍스트 추출 → .md 저장
-  └── 처리 불가 → ai_status='failed', "원문 확인 필요" 안내
-```
-
-**hwpxskill 활용 (github.com/canine89/hwpxskill):**
-- HWPX(OWPML 표준)를 ZIP 언팩 → XML 직접 파싱으로 텍스트 추출
-- python-hwpx API 대신 XML 직접 조작 방식 → 기존 서식 보존
-- 마크다운 변환 지원 → Claude API 프롬프트에 바로 삽입 가능
-- 표 데이터도 XML에서 직접 추출하므로 pyhwp보다 정확
-- 의존성: Python 3.6+, lxml
-- 제한: HWPX만 지원 (구형 HWP .hwp는 미지원)
-- 최근 공공기관 HWPX 전환 추세 → 커버리지 점차 확대
-
-**AI 전달 방식 (C-3에서 사용):**
-| 원본 포맷 | AI 전달 방식 | 정확도 |
-|-----------|-------------|:------:|
-| PDF | Claude API document 타입으로 직접 전달 (base64) | ◎ |
-| HWPX | hwpxskill로 추출한 마크다운 텍스트를 프롬프트에 삽입 | ○ |
-| HWP→PDF 변환 | 변환된 PDF를 Claude API에 전달 | △ |
-| DOCX | python-docx 추출 텍스트를 프롬프트에 삽입 | ○ |
-
-**DB 변경:**
-```sql
-ALTER TABLE bid_notices ADD COLUMN ai_status TEXT;         -- pending/processing/done/failed
-ALTER TABLE bid_notices ADD COLUMN ai_summary TEXT;        -- AI 요약 결과 (C-3에서 사용)
-ALTER TABLE bid_notices ADD COLUMN ai_analyzed_at TEXT;    -- 분석 완료 시각
-ALTER TABLE bid_notices ADD COLUMN attachment_dir TEXT;    -- 첨부파일 저장 경로
-```
-
-**구현 항목:**
-- [ ] 검토요청 시 백그라운드 첨부파일 다운로드 프로세스 (threading)
-- [ ] PDF 파일 다운로드 및 `data/attachments/{notice_id}/` 저장
-- [ ] HWPX 텍스트 추출 (hwpxskill 활용, 마크다운 변환)
-- [ ] HWP(구형) → PDF 변환 (pywin32 또는 LibreOffice, 실패 시 스킵)
-- [ ] DOCX 텍스트 추출 (python-docx)
-- [ ] 변환 상태 관리 (ai_status 컬럼)
-- [ ] 검토요청 리스트에서 첨부 처리 상태 표시
-- [ ] metadata.json 관리 (파일 목록, 포맷, 처리 결과)
-
-#### C-3: AI 검토 보조 채팅 (Claude API)
-검토요청 리스트 화면에 채팅 UI를 추가.
-회사 프로필(C-1) + 첨부 PDF(C-2) + 공고 DB 데이터를 조합하여 Claude API에 전달.
-
-**AI 프롬프트 구성:**
-```
-[시스템] 입찰 검토 보조 AI 역할 정의
-[회사 프로필] data/company_profile.md 내용
-[검토요청 공고 목록] DB 데이터 (제목, 기관, 예산, 마감, 키워드 등)
-[첨부파일] PDF를 Claude API에 직접 전달 (base64)
-[사용자 질문] 자연어 질문
-```
-
-**사용 시나리오:**
-- "검토요청 중 우리 회사와 가장 잘 매칭되는 공고는?"
-- "이 중에 컨설팅 용역이면서 예산 5천만원 이상인 거?"
-- "공고A의 자격요건을 우리가 충족하는지 확인해줘"
-- "공고B의 평가기준을 정리해줘"
-- "경쟁이 덜할 것 같은 공고는?"
-
-**비용 예상:**
-- 검토요청 10건 기준, 첨부 PDF 포함 시 ~30,000~50,000 토큰
-- Sonnet: 질문당 ~200원 / Haiku: 질문당 ~50원
-- AI 요약 결과를 DB에 캐싱하여 반복 비용 방지
-
-**구현 항목:**
-- [ ] Claude API 키 설정 (설정 페이지 또는 .env)
-- [ ] `POST /api/ai/review-chat` 엔드포인트
-- [ ] 프롬프트 조합 로직 (회사 프로필 + 공고 데이터 + 첨부 PDF)
-- [ ] Claude API 호출 (PDF 직접 전달, base64 document 방식)
-- [ ] AI 요약 결과 DB 캐싱 (ai_summary, ai_analyzed_at)
-- [ ] 검토요청 리스트에 채팅 UI (입력창 + 대화 표시 영역)
-- [ ] 대화 이력 관리 (세션 내 유지)
-- [ ] 응답에서 언급된 공고 하이라이트/필터링
-- [ ] 프롬프트 템플릿 관리 (`backend/prompts/review_chat.md`)
-
-#### C-4: 제안서 AI 생성 (추후)
+#### C-5: 제안서 AI 생성 (추후)
 - [ ] 예시 제안서 + 공고 내용 → Claude API로 초안 생성
-- [ ] PDF/DOCX 텍스트 추출 (pdfplumber, python-docx)
 - [ ] DOCX/PDF 출력 (python-docx → docx2pdf)
-- [ ] HWPX 출력 — gonggong_hwpxskills 활용 검토 (skills.sh/canine89/gonggong_hwpxskills/hwpx)
-  - 공공문서 양식 특화: 표지(기관명/제목/작성일) + 목차 + 본문(□○―※ 계층구조)
-  - ZIP-level 플레이스홀더 치환 방식 → AI 생성 텍스트를 양식에 주입
-  - python-hwpx + 네임스페이스 후처리 필수
-  - 참고: C-2의 hwpxskill(텍스트 추출용)과는 별개 — 이것은 문서 생성/치환 전용
+- [ ] HWPX 출력 — gonggong_hwpxskills 활용 검토
 - [ ] 프롬프트 관리 (`backend/prompts/proposal.md`)
 
-#### C-5: AI 스크래핑 (추후)
+#### C-6: AI 스크래핑 (추후)
 - [ ] 새 사이트/안 되는 사이트 대응 — URL + 프롬프트로 공고 수집 → DB 저장
-  - 기존 43개 스크래퍼는 그대로 유지 (비용 0원, 빠름)
-  - Claude API Tool Use로 fetch_url → HTML 분석 → insert_db 파이프라인
-  - CSS 셀렉터 수동 분석 없이 Claude가 HTML 구조 파악하여 추출
   - 1회성 분석 또는 구조가 자주 바뀌는 사이트에 활용
 
 ### Phase D: 기관 정보 DB

@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (hasPermission('org')) loadOrganizations();
     loadInterestCategories();
 
+    loadProfile();
+
     if (user.role === 'admin') {
         document.getElementById('user-mgmt-section').style.display = '';
         loadUsers();
@@ -412,6 +414,184 @@ async function changeMyPw() {
         document.getElementById('my-confirm-pw').value = '';
     } catch (e) {
         msg.textContent = '변경 실패'; msg.className = 'msg error';
+    }
+}
+
+// ─── 회사 프로필 ─────────────────────────────
+
+let profileData = [];
+
+async function loadProfile() {
+    try {
+        const res = await fetch(`${API_BASE}/api/ai/profile`);
+        if (!res.ok) return;
+        const data = await res.json();
+        profileData = data.categories || [];
+        renderProfile();
+    } catch (e) {
+        console.error('프로필 로드 실패:', e);
+    }
+}
+
+function renderProfile() {
+    const container = document.getElementById('profile-container');
+    if (!profileData.length) {
+        container.innerHTML = '<p style="color:#aaa;">프로필 항목이 없습니다.</p>';
+        return;
+    }
+
+    let html = '';
+    for (const cat of profileData) {
+        html += `<div class="profile-category">
+            <h3 style="font-size:14px;color:#1a5276;margin:16px 0 8px;border-bottom:1px solid #eee;padding-bottom:4px">${escapeHtml(cat.category)}</h3>`;
+
+        for (const f of cat.fields) {
+            if (f.type === 'json') {
+                html += renderJsonField(f);
+            } else if (f.type === 'textarea') {
+                html += `<div class="setting-item" style="margin-bottom:8px">
+                    <label style="font-size:13px;color:#555">${escapeHtml(f.label)}</label>
+                    <textarea data-key="${f.key}" style="width:100%;min-height:60px;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;resize:vertical">${escapeHtml(f.value || '')}</textarea>
+                </div>`;
+            } else if (f.type === 'boolean') {
+                html += `<div class="setting-item" style="margin-bottom:8px">
+                    <label style="font-size:13px;color:#555">${escapeHtml(f.label)}</label>
+                    <select data-key="${f.key}" style="padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px">
+                        <option value="true" ${f.value === 'true' ? 'selected' : ''}>예</option>
+                        <option value="false" ${f.value === 'false' ? 'selected' : ''}>아니오</option>
+                    </select>
+                </div>`;
+            } else {
+                html += `<div class="setting-item" style="margin-bottom:8px">
+                    <label style="font-size:13px;color:#555">${escapeHtml(f.label)}</label>
+                    <input type="${f.type === 'number' ? 'number' : 'text'}" data-key="${f.key}" value="${escapeHtml(f.value || '')}"
+                        style="width:100%;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px" />
+                </div>`;
+            }
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function renderJsonField(field) {
+    let items = [];
+    try { items = JSON.parse(field.value || '[]'); } catch(e) { items = []; }
+
+    const isProject = field.key === 'project_history';
+    const isStaff = field.key === 'staff_list';
+
+    let headers, fieldKeys;
+    if (isProject) {
+        headers = ['사업명', '발주처', '금액', '기간', '역할'];
+        fieldKeys = ['name', 'client', 'amount', 'period', 'role'];
+    } else if (isStaff) {
+        headers = ['이름/직급', '자격증', '경력(년)', '전문분야'];
+        fieldKeys = ['name', 'certification', 'experience', 'specialty'];
+    } else {
+        return `<div class="setting-item" style="margin-bottom:8px">
+            <label style="font-size:13px;color:#555">${escapeHtml(field.label)}</label>
+            <textarea data-key="${field.key}" style="width:100%;min-height:60px;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px">${escapeHtml(field.value || '[]')}</textarea>
+        </div>`;
+    }
+
+    let html = `<div style="margin-bottom:8px">
+        <label style="font-size:13px;color:#555;font-weight:600">${escapeHtml(field.label)}</label>
+        <table class="org-table" style="margin-top:4px;font-size:12px" id="json-table-${field.key}">
+            <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}<th style="width:40px"></th></tr></thead>
+            <tbody>`;
+
+    items.forEach((item, idx) => {
+        html += '<tr>';
+        fieldKeys.forEach(fk => {
+            html += `<td><input type="text" value="${escapeHtml(item[fk] || '')}" data-json-key="${field.key}" data-idx="${idx}" data-field="${fk}"
+                style="width:100%;border:none;background:transparent;font-size:12px;padding:2px" /></td>`;
+        });
+        html += `<td><button onclick="removeJsonRow('${field.key}',${idx})" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:14px" title="삭제">✕</button></td></tr>`;
+    });
+
+    html += `</tbody></table>
+        <button onclick="addJsonRow('${field.key}')" class="btn btn-sm" style="margin-top:4px;font-size:11px">+ 추가</button>
+    </div>`;
+    return html;
+}
+
+function addJsonRow(key) {
+    // 현재 테이블에서 값 수집 후 빈 행 추가
+    const current = collectJsonData(key);
+    const isProject = key === 'project_history';
+    const newItem = isProject
+        ? { name: '', client: '', amount: '', period: '', role: '' }
+        : { name: '', certification: '', experience: '', specialty: '' };
+    current.push(newItem);
+
+    // profileData 업데이트 후 리렌더
+    updateProfileField(key, JSON.stringify(current));
+    renderProfile();
+}
+
+function removeJsonRow(key, idx) {
+    const current = collectJsonData(key);
+    current.splice(idx, 1);
+    updateProfileField(key, JSON.stringify(current));
+    renderProfile();
+}
+
+function collectJsonData(key) {
+    const inputs = document.querySelectorAll(`[data-json-key="${key}"]`);
+    const rows = {};
+    inputs.forEach(inp => {
+        const idx = parseInt(inp.dataset.idx);
+        const field = inp.dataset.field;
+        if (!rows[idx]) rows[idx] = {};
+        rows[idx][field] = inp.value;
+    });
+    return Object.values(rows);
+}
+
+function updateProfileField(key, value) {
+    for (const cat of profileData) {
+        for (const f of cat.fields) {
+            if (f.key === key) { f.value = value; return; }
+        }
+    }
+}
+
+async function saveProfile() {
+    const msg = document.getElementById('profile-msg');
+    const fields = [];
+
+    // 일반 필드
+    document.querySelectorAll('[data-key]').forEach(el => {
+        fields.push({ key: el.dataset.key, value: el.value });
+    });
+
+    // JSON 필드 (테이블)
+    const jsonKeys = new Set();
+    document.querySelectorAll('[data-json-key]').forEach(el => jsonKeys.add(el.dataset.jsonKey));
+    jsonKeys.forEach(key => {
+        const data = collectJsonData(key);
+        fields.push({ key, value: JSON.stringify(data) });
+    });
+
+    try {
+        const res = await fetch(`${API_BASE}/api/ai/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            msg.textContent = `✅ 프로필 저장 완료! (${data.updated_count}건)`;
+            msg.className = 'msg';
+        } else {
+            msg.textContent = '❌ 저장 실패';
+            msg.className = 'msg error';
+        }
+        setTimeout(() => msg.textContent = '', 3000);
+    } catch (e) {
+        msg.textContent = '❌ 저장 실패: ' + e.message;
+        msg.className = 'msg error';
     }
 }
 

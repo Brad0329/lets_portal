@@ -5,3 +5,7 @@ requests
 apscheduler
 openpyxl
 bcrypt
+pdfplumber
+python-docx
+lxml
+anthropic

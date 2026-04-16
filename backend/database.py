@@ -281,6 +281,136 @@ def init_db():
     except Exception:
         pass  # 이미 존재하면 무시
 
+    # Phase C: 회사 프로필 테이블 (유연한 key-value 구조)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS company_profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            field_key TEXT NOT NULL UNIQUE,
+            field_label TEXT NOT NULL,
+            field_value TEXT DEFAULT '',
+            field_type TEXT DEFAULT 'text',
+            sort_order INTEGER DEFAULT 0,
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+
+    # 회사 프로필 초기 항목
+    profile_fields = [
+        # 기본정보
+        ("기본정보", "company_name", "회사명", "", "text", 1),
+        ("기본정보", "representative", "대표자", "", "text", 2),
+        ("기본정보", "established", "설립연도", "", "number", 3),
+        ("기본정보", "industry", "업종", "", "text", 4),
+        ("기본정보", "location", "소재지", "", "text", 5),
+        ("기본정보", "is_sme", "중소기업 해당", "true", "boolean", 6),
+        # 사업실적
+        ("사업실적", "project_history", "수행실적", "[]", "json", 10),
+        # 인력현황
+        ("인력현황", "staff_list", "투입인력", "[]", "json", 20),
+        # 재무상태
+        ("재무상태", "annual_revenue", "연매출", "", "text", 30),
+        ("재무상태", "credit_rating", "신용등급", "", "text", 31),
+        ("재무상태", "capital", "자본금", "", "text", 32),
+        # 기술력
+        ("기술력", "technologies", "보유기술/방법론", "", "textarea", 40),
+        ("기술력", "patents_certs", "특허/인증", "", "textarea", 41),
+        # 참여제한
+        ("참여제한", "region_available", "지역제한 가능 여부", "", "text", 50),
+        ("참여제한", "consortium_available", "컨소시엄 가능 여부", "", "text", 51),
+        ("참여제한", "subcontract_limit", "하도급 제한 사항", "", "text", 52),
+    ]
+    for cat, key, label, value, ftype, order in profile_fields:
+        cursor.execute(
+            "INSERT OR IGNORE INTO company_profile (category, field_key, field_label, field_value, field_type, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+            (cat, key, label, value, ftype, order),
+        )
+
+    # Phase C: AI 분석 결과 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_analyses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            notice_id INTEGER NOT NULL REFERENCES bid_notices(id),
+            analysis_seq INTEGER NOT NULL DEFAULT 1,
+            parsed_criteria TEXT,
+            parsed_requirements TEXT,
+            parsed_summary TEXT,
+            total_score REAL,
+            total_max_score REAL,
+            match_rate REAL,
+            match_detail TEXT,
+            match_recommendation TEXT,
+            simple_grade TEXT,
+            simple_reason TEXT,
+            mode TEXT DEFAULT 'full',
+            profile_snapshot TEXT,
+            profile_changes TEXT,
+            model_parsing TEXT,
+            model_matching TEXT,
+            cost_krw REAL DEFAULT 0,
+            tokens_total INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            UNIQUE(notice_id, analysis_seq)
+        )
+    """)
+
+    # Phase C: AI 크레딧 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_credits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL CHECK(type IN ('charge', 'usage')),
+            amount REAL NOT NULL,
+            balance REAL NOT NULL,
+            description TEXT,
+            notice_id INTEGER,
+            analysis_id INTEGER,
+            model_used TEXT,
+            tokens_input INTEGER,
+            tokens_output INTEGER,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+
+    # Phase C: AI 설정 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            description TEXT,
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    ai_config_defaults = [
+        ("model_parsing", "claude-haiku-4-5-20251001", "문서 파싱 모델"),
+        ("model_matching", "claude-sonnet-4-20250514", "매칭 분석 모델"),
+        ("exchange_rate", "1400", "환율 (USD → KRW)"),
+    ]
+    for key, value, desc in ai_config_defaults:
+        cursor.execute(
+            "INSERT OR IGNORE INTO ai_config (key, value, description) VALUES (?, ?, ?)",
+            (key, value, desc),
+        )
+
+    # Phase C: bid_notices에 AI 상태 컬럼 추가
+    ai_columns = [
+        ("ai_status", "TEXT"),
+        ("ai_match_rate", "REAL"),
+        ("ai_recommendation", "TEXT"),
+        ("attachment_dir", "TEXT"),
+    ]
+    for col_name, col_type in ai_columns:
+        try:
+            cursor.execute(f"ALTER TABLE bid_notices ADD COLUMN {col_name} {col_type}")
+        except Exception:
+            pass
+
+    # 인덱스
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_analyses_notice ON ai_analyses(notice_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_credits_type ON ai_credits(type)")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 

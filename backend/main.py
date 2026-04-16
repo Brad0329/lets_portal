@@ -11,7 +11,7 @@ import logging
 import os
 
 from database import init_db
-from routers import auth, users, notices, tags, settings, keywords, sources, collection, organizations
+from routers import auth, users, notices, tags, settings, keywords, sources, collection, organizations, ai
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ app.include_router(keywords.router)
 app.include_router(sources.router)
 app.include_router(collection.router)
 app.include_router(organizations.router)
+app.include_router(ai.router)
 
 
 # ─── 프론트엔드 정적파일 ──────────────────────────
