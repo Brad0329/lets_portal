@@ -9,3 +9,11 @@ build/
 dist/
 release/
 *.spec
+
+# 런타임/로컬 전용
+backend/cookies.txt
+claude.md
+tmp/sample.pptx
+tmp/*.hwp
+tmp/*.pdf
+tmp/*.docx

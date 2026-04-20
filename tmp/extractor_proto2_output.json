@@ -1,0 +1,1210 @@
+{
+  "meta": {
+    "model": "claude-sonnet-4-20250514",
+    "total_cost_krw": 471.6,
+    "total_llm_calls": 8,
+    "total_input_tokens": 62814,
+    "total_output_tokens": 9892
+  },
+  "sources": [
+    {
+      "src_id": "src_01",
+      "path": "C:\\Users\\user\\OneDrive\\바탕 화면\\[대외비]제안서 샘플\\제안서 샘플\\샘플 8 _ 경과원 ESG 교육\\제안서(사본).hwp",
+      "year": 2023,
+      "awarded": true,
+      "proposal_title": "2023 경기창업허브 스타트업 ESG 교육(비즈니스)",
+      "organization": "경기도경제과학진흥원"
+    }
+  ],
+  "claims": [
+    {
+      "id": "cl_56727867",
+      "category": "USP",
+      "statement": "경기도경제과학진흥원과의 이전 과업에서 목표수료를 160% 이상 초과 달성한 검증된 역량 보유(2020년~2022년 총 4회)",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "차별화전략",
+        "업체현황"
+      ],
+      "length_variants": {
+        "tagline": "경과원 과업 수료율 160% 초과달성",
+        "summary": "2020~2022년 경기도경제과학진흥원 과업 총 4회 진행, 목표수료 160% 이상 초과달성한 검증된 역량"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅰ.3 사업내용",
+        "section_start_line": 130
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_87e7d3b7",
+      "category": "Methodology",
+      "statement": "PBL 기반 프로그램 『교육 → 과제 부여 → 참가자 개별 아이템 기준의 과제 작성 → 참가자가 작성한 자료 중심의 멘토링』 구성",
+      "tags": {
+        "domain": [
+          "창업교육",
+          "ESG"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": [
+          "PBL",
+          "멘토링"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "PBL 기반 교육-과제-멘토링 순환구성",
+        "summary": "PBL 기반으로 교육 후 개별 아이템 과제 작성, 참가자 작성 자료 중심의 맞춤형 멘토링 진행"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅰ.3 사업내용",
+        "section_start_line": 130
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_cfd9812b",
+      "category": "Philosophy",
+      "statement": "ESG 각 분야 참가자 관심 및 필요 내용에 따라 선택하여 수강하는 선택형 강의 구성",
+      "tags": {
+        "domain": [
+          "ESG"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "참가자 니즈 기반 선택형 ESG 강의",
+        "summary": "분반형이 아닌 선택형 강의로 참가자 관심사에 따라 ESG 분야별 강의 선택 수강 가능"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅰ.3 사업내용",
+        "section_start_line": 130
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_beb24068",
+      "category": "Operational",
+      "statement": "ESG/창업학 전공자 및 관련 자격증 취득자로 운영인력 절반 이상을 구성하여 전화, Zoom을 통한 논-스톱 멘토링(상시 멘토링) 제공",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": [
+          "멘토링"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "운영체계"
+      ],
+      "length_variants": {
+        "tagline": "전문인력 기반 상시 멘토링 체계",
+        "summary": "ESG/창업학 전공자·자격증 보유자가 운영인력 50% 이상 구성, 실시간 논-스톱 멘토링 제공"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅰ.3 사업내용",
+        "section_start_line": 130
+      },
+      "recurrence": 1,
+      "confidence": 0.85,
+      "user_verified": false
+    },
+    {
+      "id": "cl_104a8e4f",
+      "category": "Operational",
+      "statement": "과업관리 매뉴얼과 세부 체크리스트를 활용한 체계적인 과업관리 및 프로그램 전용 운영사무국 개설",
+      "tags": {
+        "domain": [],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "수행방법",
+        "운영체계"
+      ],
+      "length_variants": {
+        "tagline": "전용 운영사무국 + 매뉴얼 기반 관리",
+        "summary": "프로그램 전용 운영사무국 개설, 과업관리 매뉴얼 및 세부 체크리스트 활용한 체계적 관리"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅰ.3 사업내용",
+        "section_start_line": 130
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_e969702d",
+      "category": "Methodology",
+      "statement": "자체 개발한 ESG 자가진단(Insight Quotient) 및 창업역량진단검사를 통한 사전/사후 교육성과 측정",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": [
+          "자가진단",
+          "역량진단"
+        ]
+      },
+      "proposal_sections": [
+        "추진전략",
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "자체 개발 ESG·창업역량 진단시스템",
+        "summary": "자체 개발한 ESG IQ 진단과 창업역량진단검사로 참가자의 사전/사후 역량변화를 데이터로 분석하여 교육성과 측정"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_8fd94c2c",
+      "category": "Philosophy",
+      "statement": "참가자의 ESG 관심 분야에 따른 선택형 강의 제공으로 개별 니즈 맞춤형 교육 실현",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "추진전략",
+        "수행방법",
+        "기대효과"
+      ],
+      "length_variants": {
+        "tagline": "ESG 분야별 선택형 강의 운영",
+        "summary": "ESG 주요 지표 교육을 선택형 강의로 진행하여 참가자의 관심 분야와 사업계획에 맞는 맞춤형 전략 학습 제공"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.85,
+      "user_verified": false
+    },
+    {
+      "id": "cl_e194a4bd",
+      "category": "Operational",
+      "statement": "그룹멘토링 형태 운영으로 ESG 경영 분야별 참가자 간 정보교류 및 멘토링 효율성 극대화",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": [
+          "그룹멘토링"
+        ]
+      },
+      "proposal_sections": [
+        "추진전략",
+        "수행방법",
+        "운영계획"
+      ],
+      "length_variants": {
+        "tagline": "ESG 분야별 그룹멘토링 운영",
+        "summary": "비슷한 ESG 경영 분야 관심사를 가진 참가자들을 그룹으로 구성하여 정보교류와 멘토링 효율성을 극대화하는 운영방식"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_a60eaec4",
+      "category": "USP",
+      "statement": "창업학 석·박사 4명, 창업보육전문매니저 1명, 창업지도사 3명 등 창업 전문자격 보유 인력 구성",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "수행조직",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "창업 전문자격 보유 인력진 구성",
+        "summary": "창업학 석·박사 4명, 창업보육전문매니저 1명, 창업지도사 3명, 기술평가사 1명으로 구성된 창업 전문자격 보유 수행팀"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_0e5417ca",
+      "category": "USP",
+      "statement": "중소벤처기업인증원 ESG 인증 심사위원 등 ESG 전문인력 투입을 통한 실질적 지원",
+      "tags": {
+        "domain": [
+          "ESG"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "수행조직",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "ESG 인증 심사위원급 전문인력 투입",
+        "summary": "중소벤처기업인증원 ESG 인증 심사위원, 한국 ESG 기업협회 이사장 등 ESG 분야 최고 수준 전문인력의 실질적 지원"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_46bf7544",
+      "category": "Story",
+      "statement": "대표자 및 임원의 창업 관련 경력 15년 이상, 총 530회 이상 창업 프로그램 총괄 운영 실적",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "수행조직"
+      ],
+      "length_variants": {
+        "tagline": "창업교육 15년 경력, 530회 운영 실적",
+        "summary": "대표자 및 임원이 창업 관련 경력 15년 이상을 보유하고 총 530회 이상의 창업 프로그램을 총괄 운영한 풍부한 실적"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.2 추진 전략",
+        "section_start_line": 272
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_6e270193",
+      "category": "Methodology",
+      "statement": "PBL 기반 — 교육→과제 부여→참가자 개별 과제 작성→참가자가 작성한 자료 중심의 멘토링 순환 구성으로 창업역량 강화",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": [
+          "PBL",
+          "멘토링"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "PBL 기반 교육→과제→멘토링 순환 구성",
+        "summary": "PBL 기반의 교육 후 과제 부여, 참가자 개별 과제 작성, 작성 자료 중심 멘토링 순환 방식으로 완성도 있는 BM·사업계획서 고도화 달성"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.92,
+      "user_verified": false
+    },
+    {
+      "id": "cl_dfb26a97",
+      "category": "Philosophy",
+      "statement": "참가자의 ESG(Environment/Social/Governance) 관심 및 필요 분야에 따른 선택형 수강을 통한 집중적 인사이트 향상",
+      "tags": {
+        "domain": [
+          "ESG"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "ESG 분야별 선택형 강의 제공",
+        "summary": "분반형이 아닌 선택형 강의 구성으로 참가자의 ESG 관심 분야에 따른 집중적 인사이트 향상 및 만족도 향상 기대"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_a9b453ef",
+      "category": "Methodology",
+      "statement": "총 38개(4개 대분류, 11개 중분류) 문항으로 구성된 ESG 자가진단의 검사 결과를 개별 분석 프로파일 형태로 제공",
+      "tags": {
+        "domain": [
+          "ESG"
+        ],
+        "audience": [],
+        "method": [
+          "자가진단"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "ESG 자가진단 38개 문항 개별 분석",
+        "summary": "사전/사후 ESG 자가진단을 38개 문항(4개 대분류, 11개 중분류)으로 실시하여 개별 분석 프로파일 제공, ESG 인식 수준·역량 점검 가능"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_466c5ecf",
+      "category": "Methodology",
+      "statement": "자체 개발한 사전/사후 창업역량진단검사(총 120개 문항) 실시를 통한 교육성과 점검 및 비교 분석",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": [
+          "역량진단"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "자체 개발 창업역량진단검사 120문항",
+        "summary": "자체 개발한 창업역량진단검사 120문항(창업자 역량, 시장기회, 아이템, 비즈니스 모델, 마케팅 전략)으로 사전/사후 교육성과 데이터 도출"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.93,
+      "user_verified": false
+    },
+    {
+      "id": "cl_57901cf7",
+      "category": "Operational",
+      "statement": "ESG/창업학 전공자 및 ESG/창업학 관련 자격증 취득자로 운영인력의 절반 이상을 구성하여 논-스톱 멘토링 운영",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": [
+          "멘토링"
+        ]
+      },
+      "proposal_sections": [
+        "운영계획",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "전문인력 절반 이상으로 논-스톱 멘토링",
+        "summary": "ESG/창업학 전공자 및 관련 자격증 취득자로 운영인력 절반 이상 구성, 전화·Zoom 등을 통해 참가자 요청 시 실시간 멘토링 진행"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.91,
+      "user_verified": false
+    },
+    {
+      "id": "cl_7fd9f35d",
+      "category": "Operational",
+      "statement": "과업관리 매뉴얼과 세부 체크리스트를 활용한 체계적이고 꼼꼼한 과업관리 및 운영사무국 설치",
+      "tags": {
+        "domain": [],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "운영계획",
+        "업체현황"
+      ],
+      "length_variants": {
+        "tagline": "매뉴얼+체크리스트 기반 품질관리",
+        "summary": "운영사무국 설치 및 과업관리 매뉴얼과 세부 체크리스트 활용으로 체계적 과업관리, 진행 일정과 준비사항 사전 점검으로 문제점 대응"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.3 사업 세부 내용",
+        "section_start_line": 382
+      },
+      "recurrence": 1,
+      "confidence": 0.88,
+      "user_verified": false
+    },
+    {
+      "id": "cl_382f400c",
+      "category": "Methodology",
+      "statement": "PBL(문제중심학습) 기법을 적용해 실질적 경영 능력을 기를 수 있는 기회 마련",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": [
+          "PBL"
+        ]
+      },
+      "proposal_sections": [
+        "수행방법",
+        "기대효과"
+      ],
+      "length_variants": {
+        "tagline": "PBL 기법 적용한 실질적 경영교육",
+        "summary": "PBL(문제중심학습) 기법을 적용해 참가자들이 실질적 경영 능력을 기를 수 있는 실무 중심 교육 제공"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.4 사후관리",
+        "section_start_line": 897
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_cb01762e",
+      "category": "Philosophy",
+      "statement": "관심있는 ESG 분야에 대한 선택적 학습을 통한 ESG 인사이트 확보",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "수행방법",
+        "기대효과"
+      ],
+      "length_variants": {
+        "tagline": "ESG 분야별 선택형 학습 제공",
+        "summary": "참가자 관심 분야에 맞는 ESG 선택적 학습을 통해 실질적인 ESG 인사이트 확보 지원"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.4 사후관리",
+        "section_start_line": 897
+      },
+      "recurrence": 1,
+      "confidence": 0.85,
+      "user_verified": false
+    },
+    {
+      "id": "cl_4c82f8df",
+      "category": "Operational",
+      "statement": "사업 종료 후 3개월 지난 시점 모바일·이메일·전화를 통한 사후 성과 추적 설문조사 진행",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [],
+        "method": [
+          "사후추적조사"
+        ]
+      },
+      "proposal_sections": [
+        "사후관리"
+      ],
+      "length_variants": {
+        "tagline": "3개월 후 사후 추적조사 실시",
+        "summary": "사업 종료 3개월 후 모바일·이메일·전화를 통해 고용, 매출, 투자유치 등 성과 추적 설문조사 실시"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅱ.4 사후관리",
+        "section_start_line": 897
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_5f10f2e7",
+      "category": "USP",
+      "statement": "경기도경제과학진흥원 창업교육 3년 연속(2021~2023) 운영, 수료율 목표 165% 달성",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "예비창업자"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "경과원 창업교육 3년 연속 운영",
+        "summary": "2021~2023년 경기도경제과학진흥원 창업 실전교육 3년 연속 운영, 모집 134%·수료 165% 달성"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_01e0384c",
+      "category": "USP",
+      "statement": "창업진흥원 재도전 성공패키지 교육형 3년 연속(2019~2022) S등급(최우수) 평가",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "재창업자"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "재도전 성공패키지 3년 연속 최우수",
+        "summary": "창업진흥원 재도전 성공패키지 교육형 주관기관 3년 연속(2019~2022) 선정, S등급 최우수 평가"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_8919dd37",
+      "category": "Identity",
+      "statement": "분야별 교육 프로그램에 특화된 창업교육·컨설팅 전문기업",
+      "tags": {
+        "domain": [
+          "창업교육",
+          "창업컨설팅"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황"
+      ],
+      "length_variants": {
+        "tagline": "분야별 특화 창업교육 전문기업",
+        "summary": "분야별 교육 프로그램에 특화된 창업교육·컨설팅 전문기업으로 누적 1,200회 이상 프로그램 운영"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_c226906a",
+      "category": "Story",
+      "statement": "누적 1,200회 창업 프로그램 운영, 수료자 43,000명 달성 (2023년 2월 기준)",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "수행실적"
+      ],
+      "length_variants": {
+        "tagline": "누적 1,200회 프로그램 운영",
+        "summary": "누적 1,200회 이상 창업 프로그램 운영, 수료자 43,000명 달성 (2023년 2월 기준)"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_a4070d10",
+      "category": "USP",
+      "statement": "290억원 투자연계 실적 보유한 액셀러레이터 (2022년 2월 기준)",
+      "tags": {
+        "domain": [
+          "액셀러레이팅"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "290억원 투자연계 실적",
+        "summary": "등록 액셀러레이터로 72개 기업 대상 직접 투자 및 투자연계 누적 290억원 달성 (2022년 2월)"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.9,
+      "user_verified": false
+    },
+    {
+      "id": "cl_5a27f05c",
+      "category": "Story",
+      "statement": "2022년 경기창업허브 탄소중립교육 모집 133%·수료 140% 달성",
+      "tags": {
+        "domain": [
+          "탄소중립",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "수행실적"
+      ],
+      "length_variants": {
+        "tagline": "탄소중립교육 모집·수료 목표 초과달성",
+        "summary": "2022년 경기도경제과학진흥원 탄소중립교육 모집 목표 133%, 수료 목표 140% 달성"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_9a939664",
+      "category": "Methodology",
+      "statement": "ESG 경영 이론교육과 창업 실전교육을 상호보완적 과정으로 설계",
+      "tags": {
+        "domain": [
+          "ESG",
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "수행방법"
+      ],
+      "length_variants": {
+        "tagline": "ESG 이론+실전 상호보완 설계",
+        "summary": "ESG 경영 이론교육과 창업 실전교육을 상호보완적 과정으로 설계하여 참여도와 교육효과 제고"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.1 업체 현황",
+        "section_start_line": 942
+      },
+      "recurrence": 1,
+      "confidence": 0.85,
+      "user_verified": false
+    },
+    {
+      "id": "cl_b8b0cc34",
+      "category": "Story",
+      "statement": "2020~2022년 경기도경제과학진흥원 창업 실전교육 3년 연속 수행",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "예비창업자",
+          "초기창업자"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "사업실적",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "경과원 창업교육 3년 연속 수행",
+        "summary": "2020~2022년 경기도경제과학진흥원 창업 실전교육 3년 연속 수행으로 경기지역 창업교육 전문성 보유"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.2 사업실적",
+        "section_start_line": 988
+      },
+      "recurrence": 1,
+      "confidence": 0.98,
+      "user_verified": false
+    },
+    {
+      "id": "cl_f5865bf3",
+      "category": "Story",
+      "statement": "2021~2022년 경기도경제과학진흥원 탄소중립교육(ESG 교육 포함) 연속 수행",
+      "tags": {
+        "domain": [
+          "탄소중립",
+          "ESG"
+        ],
+        "audience": [
+          "스타트업"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "사업실적",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "경과원 ESG·탄소중립교육 전문",
+        "summary": "2021~2022년 경기도경제과학진흥원 탄소중립교육(ESG 교육 포함) 연속 수행으로 ESG 전문역량 확보"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.2 사업실적",
+        "section_start_line": 988
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_8ba2f455",
+      "category": "USP",
+      "statement": "2020~2022년 창업진흥원 재도전 성공패키지 3년 연속 수행",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [
+          "재창업자"
+        ],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "사업실적",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "재도전 성공패키지 3년 연속",
+        "summary": "2020~2022년 창업진흥원 재도전 성공패키지 3년 연속 수행으로 재창업 교육 전문성 입증"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.2 사업실적",
+        "section_start_line": 988
+      },
+      "recurrence": 1,
+      "confidence": 0.98,
+      "user_verified": false
+    },
+    {
+      "id": "cl_2def5600",
+      "category": "USP",
+      "statement": "2020~2022년 한국관광공사 관광벤처기업 교육·컨설팅(ESG 교육 포함) 3년 연속 수행",
+      "tags": {
+        "domain": [
+          "관광",
+          "ESG"
+        ],
+        "audience": [
+          "관광벤처"
+        ],
+        "method": [
+          "컨설팅"
+        ]
+      },
+      "proposal_sections": [
+        "업체현황",
+        "사업실적",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "관광벤처 ESG교육 3년 연속",
+        "summary": "2020~2022년 한국관광공사 관광벤처기업 대상 교육·컨설팅(ESG 교육 포함) 3년 연속 수행"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.2 사업실적",
+        "section_start_line": 988
+      },
+      "recurrence": 1,
+      "confidence": 0.98,
+      "user_verified": false
+    },
+    {
+      "id": "cl_e600cba1",
+      "category": "USP",
+      "statement": "대표이사 창업 분야 경력 20년 이상, 총 530회 이상 창업 프로그램 총괄 운영",
+      "tags": {
+        "domain": [
+          "창업교육"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "조직 및 인력 현황"
+      ],
+      "length_variants": {
+        "tagline": "대표 530회 이상 창업프로그램 운영",
+        "summary": "대표이사 창업 분야 20년 경력, 벤처창업학 박사 수료 및 530회 이상 창업 프로그램 총괄 운영"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.3 조직 및 인력 현황",
+        "section_start_line": 1089
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_8c11ff84",
+      "category": "USP",
+      "statement": "상무이사 융합컨설팅학 박사, 340회 이상 국내외 창업 프로그램 기획 총괄",
+      "tags": {
+        "domain": [
+          "창업교육",
+          "창업컨설팅"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "조직 및 인력 현황"
+      ],
+      "length_variants": {
+        "tagline": "상무 340회 이상 창업프로그램 총괄",
+        "summary": "상무이사 융합컨설팅학 박사, 창업지도사 자격 보유 및 340회 이상 국내외 창업 프로그램 기획 총괄"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.3 조직 및 인력 현황",
+        "section_start_line": 1089
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    },
+    {
+      "id": "cl_73b85f8d",
+      "category": "Identity",
+      "statement": "융합컨설팅학 박사 1명, 벤처창업학 박사수료 1명, 창업학 석사 2명, 창업지도사 3명 등 창업 전문 자격진 보유",
+      "tags": {
+        "domain": [
+          "창업교육",
+          "창업컨설팅"
+        ],
+        "audience": [],
+        "method": []
+      },
+      "proposal_sections": [
+        "업체현황",
+        "차별화전략"
+      ],
+      "length_variants": {
+        "tagline": "창업 박사·석사급 전문인력 보유",
+        "summary": "융합컨설팅학 박사, 벤처창업학 박사수료, 창업학 석사, 창업지도사, 창업보육전문매니저 등 창업 전문 자격진 구성"
+      },
+      "evidence_refs": [],
+      "source": {
+        "src_id": "src_01",
+        "section": "Ⅲ.3 조직 및 인력 현황",
+        "section_start_line": 1089
+      },
+      "recurrence": 1,
+      "confidence": 0.95,
+      "user_verified": false
+    }
+  ],
+  "quantitative_hints": [
+    {
+      "type": "인증/등록",
+      "name": "◦ 사후 추적조사(사업자 등록 여부/지원사업 선정/투자유지/직원 추가 고용 여부 등) 실시 및 후속 지원사업 안내 및 추천을 통한 연계",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "- SNS 에 홍보물 공유 후 인증하는 인원을 대상으로 기프티콘을 발송하는 버즈 마 케팅(개별 SNS 업로드를 통해 연동되어 있는 계정 사용자들",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "- 버즈 마케팅( SNS 홍보물 업로드 인증 이벤트)을 활용한 온라인 홍보 진행",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "◦ 사후 추적조사 (개인/법인사업자 등록 여부 / 직원 고용 여부 / 타 지원사업 선정 유무 / 매출 / 투자유치 등)",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "◦ 중소벤처기업인증원 ESG 인증 심사위원, 한국 ESG 기업협회 이사장, B2L 소프트 ESG 경영센터 부사장 등 ESG 전문인력의 실질적이고",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| E S G 지 원 | ESG 전문인력 | 이** | 대표 | 중소벤처기업인증원 ESG 인증 심사위원 ******경영연구소 대표 한국폴리텍대학",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "- ‘ 참가 신청서류 ’: 참가신청서 (인적사항, 창업여부, 참가 동기, 아이템설명, 사업 화계획), 개인정보 활용동의서, 사업자 등록증(기창업",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ◦ 참여 인원 명단 및 연락처, 주민등록번호 등 일체의 개인정보 ◦ 참가자가 제출한 참가신청서, 사업자등록증 등의 모든 자료 ◦ 사업수행과 ",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ◦ 업무상 취득한 개인정보(연락처, 주민등록번호 등)는 목적이 달성될 시 즉시 파기 ◦ 과업과 관련한 결과물, 문서 등 2년 이상 보관하며 ",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ㈜ 씨드그라운드 | 대표 | 박*혜 | 중기부등록 액셀러레이터 / 충북창조경제혁신센터책임연 구원 / 성균관대학교 교수 |  |",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| BM/ 사업 계획서 | 충북대학교 | 교수 | 조*성 | 충북기술지주회사이사 / 창업진흥원 멘토 / 벤처박스(주) 투자 수석심사역 / 중소기",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ㈜ 비즈웹코리아 | 대표 | 은*성 | 삼성, LG, SK, 네이버 등 글로벌기업 컨설팅 / 중소벤처기업부, 창업진흥원 전문멘토 / 창업학석",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ESG | 한국산업보안경영 연구소 | 대표 | 이 * 희 | 중소벤처기업인증원 ESG 인증 심사위원 / 한국폴리텍대학 외래교수 / 중소기업청",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| 성공 기업가 | 이랑텍 | 대표 | 이*복 | 경기도 ESG 우수기업 인증 / 자체 지속가능경영보고서 발간 |",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ㈜ 동구밭 | 대표 | 노*호 | 매출 100억원 이상 / 발달장애인의 자립을 돕는 소셜벤처기업 |  |",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| 법 인 번 호 | ******-******* | 사업자등록번호 | ***-**-***** |",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| ⦁ 2022년 중소벤처기업부 액셀러레이터 등록 (중소벤처기업부 제2020-34호) ⦁ 개인투자조합 결성 (더블에스투자조합 1호, 바닐라카카오",
+      "year": 2022,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| 24 | 2022 | 2022년 도전하는 전북 청소년 비즈쿨 캠프 | 중소벤처기업부 전북기계공업고등학교 |",
+      "year": 2022,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| 44 | 2021 | 성장관광벤처기업 대상 교육 및 컨설팅 (ESG 교육 포함) | 한국관광공사 |",
+      "year": null,
+      "source_id": "src_01"
+    },
+    {
+      "type": "인증/등록",
+      "name": "| 61 | 2021 | 2021년 청소년 전북 비즈쿨 체험 캠프 및 워크숍 | 전북지방중소벤처기업청 |",
+      "year": 2021,
+      "source_id": "src_01"
+    }
+  ],
+  "warnings": []
+}

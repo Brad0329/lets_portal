@@ -1,18 +1,36 @@
 """
-문서 파싱 모듈 — 향후 독립 패키지(lets_doc_parser) 분리 대비
-PDF, HWPX, DOCX, HWP(구형) 문서에서 텍스트를 추출한다.
+문서 파싱 모듈 — 독립 패키지(lets_doc_parser)로 분리 가능하도록 설계
 
-사용법:
-    from utils.file_parser import extract_text
+지원 포맷:
+    - PDF  : pdfplumber
+    - HWPX : lxml (XML 직접 파싱)
+    - DOCX : python-docx
+    - HWP  : pyhwp (1차, 한/글 불필요) → 한/글 COM 자동화 (2차, 한/글 설치 시)
+
+공개 인터페이스:
+    from utils.file_parser import extract_text, ParseResult
     result = extract_text("제안요청서.pdf")
     if result.success:
         print(result.text)
+
+이식 가이드 (bidwatch 등):
+    1) 이 파일 하나만 복사
+    2) 의존성 설치:
+       pdfplumber, lxml, python-docx, pyhwp, beautifulsoup4
+       (선택) pywin32 — Windows + 한/글 설치 시 HWP 품질 향상
+    3) 프로젝트 특정 모듈 import 없음 — 바로 동작
+
+설계 원칙:
+    - 파일 경로만 받고 ParseResult만 반환 (프레임워크/DB 무관)
+    - 선택 의존성은 import 시점에 로드 (pywin32 미설치 환경 대응)
+    - 파싱 실패 시 예외가 아닌 ParseResult(success=False, error=...)로 반환
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 import logging
+
+__all__ = ["extract_text", "ParseResult"]
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +74,7 @@ def extract_text(file_path: str) -> ParseResult:
         )
 
     try:
-        result = parser(p, raw)
-        return result
+        return parser(p, raw)
     except Exception as e:
         logger.exception("파싱 실패: %s", file_path)
         return ParseResult(
@@ -237,9 +254,6 @@ def _parse_docx(path: Path, raw: bytes) -> ParseResult:
 
         if tag == "p":
             # 단락
-            para = docx.oxml.ns.qn("w:p")  # noqa: F841
-            text = element.text or ""
-            # 하위 run 텍스트 수집
             runs = element.findall(".//" + docx.oxml.ns.qn("w:t"))
             text = "".join(r.text or "" for r in runs)
             if text.strip():
@@ -279,27 +293,80 @@ def _docx_parse_table(tbl_element, qn) -> list:
 
 
 # ---------------------------------------------------------------------------
-# HWP(구형) 파서 — pywin32 변환 시도, 실패 시 스킵
+# HWP(구형) 파서 — pyhwp(1차) → 한/글 COM(2차 폴백)
 # ---------------------------------------------------------------------------
 
 def _parse_hwp(path: Path, raw: bytes) -> ParseResult:
-    """HWP(구형 바이너리) → pywin32로 한/글 COM 자동화하여 텍스트 추출 시도"""
-    import platform
-    if platform.system() != "Windows":
+    """HWP 구형 바이너리 파싱.
+
+    전략:
+      1차: pyhwp — hwp5html(XSLT)로 XHTML 추출 후 BeautifulSoup로 마크다운 변환
+           한/글 프로그램 불필요, 모든 OS에서 동작, 표 내용까지 추출
+      2차 폴백: pywin32 COM 자동화 — 한/글 설치 환경에서만 동작, 품질 최상
+    """
+    # 1차: pyhwp 시도
+    result = _parse_hwp_pyhwp(path, raw)
+    if result.success:
+        return result
+    pyhwp_error = result.error
+
+    # 2차: COM 폴백
+    com_result = _parse_hwp_com(path, raw)
+    if com_result.success:
+        return com_result
+
+    # 둘 다 실패
+    return ParseResult(
+        error=f"HWP 파싱 실패 — pyhwp: {pyhwp_error} | COM: {com_result.error}",
+        format="hwp",
+        raw_bytes=raw,
+    )
+
+
+def _parse_hwp_pyhwp(path: Path, raw: bytes) -> ParseResult:
+    """pyhwp로 HWP → XHTML 변환 후 마크다운 추출 (한/글 설치 불필요)"""
+    try:
+        from hwp5.hwp5html import HTMLTransform
+        from hwp5.xmlmodel import Hwp5File
+    except ImportError as e:
+        return ParseResult(error=f"pyhwp 미설치: {e}", format="hwp", raw_bytes=raw)
+
+    import tempfile
+
+    try:
+        transform = HTMLTransform()
+        hwp5file = Hwp5File(str(path))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transform.transform_hwp5_to_dir(hwp5file, tmpdir)
+            html_path = Path(tmpdir) / "index.xhtml"
+            if not html_path.exists():
+                return ParseResult(error="pyhwp 출력 파일 없음", format="hwp", raw_bytes=raw)
+            html = html_path.read_text(encoding="utf-8")
+
+        text = _xhtml_to_markdown(html)
+        if not text.strip():
+            return ParseResult(error="pyhwp 텍스트 추출 실패 (빈 문서)", format="hwp", raw_bytes=raw)
+
         return ParseResult(
-            error="HWP 파싱은 Windows에서만 지원됩니다",
+            text=text,
             format="hwp",
             raw_bytes=raw,
+            success=True,
         )
+    except Exception as e:
+        return ParseResult(error=f"pyhwp 파싱 실패: {e}", format="hwp", raw_bytes=raw)
+
+
+def _parse_hwp_com(path: Path, raw: bytes) -> ParseResult:
+    """pywin32로 한/글 COM 자동화하여 텍스트 추출 (한/글 설치 환경 전용)"""
+    import platform
+    if platform.system() != "Windows":
+        return ParseResult(error="COM 폴백은 Windows + 한/글 설치 환경에서만 동작", format="hwp", raw_bytes=raw)
 
     try:
         import win32com.client
     except ImportError:
-        return ParseResult(
-            error="pywin32 미설치 — pip install pywin32",
-            format="hwp",
-            raw_bytes=raw,
-        )
+        return ParseResult(error="pywin32 미설치", format="hwp", raw_bytes=raw)
 
     hwp = None
     try:
@@ -307,7 +374,6 @@ def _parse_hwp(path: Path, raw: bytes) -> ParseResult:
         hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
         hwp.Open(str(path.resolve()), "HWP", "forceopen:true")
 
-        # 전체 텍스트 추출
         hwp.InitScan()
         texts = []
         while True:
@@ -320,7 +386,7 @@ def _parse_hwp(path: Path, raw: bytes) -> ParseResult:
 
         full_text = "\n".join(texts)
         if not full_text.strip():
-            return ParseResult(error="HWP 텍스트 추출 실패", format="hwp", raw_bytes=raw)
+            return ParseResult(error="COM 텍스트 추출 실패", format="hwp", raw_bytes=raw)
 
         return ParseResult(
             text=full_text,
@@ -328,13 +394,8 @@ def _parse_hwp(path: Path, raw: bytes) -> ParseResult:
             raw_bytes=raw,
             success=True,
         )
-
     except Exception as e:
-        return ParseResult(
-            error=f"HWP COM 자동화 실패: {e}",
-            format="hwp",
-            raw_bytes=raw,
-        )
+        return ParseResult(error=f"COM 자동화 실패: {e}", format="hwp", raw_bytes=raw)
     finally:
         if hwp:
             try:
@@ -342,6 +403,89 @@ def _parse_hwp(path: Path, raw: bytes) -> ParseResult:
                 hwp.Quit()
             except Exception:
                 pass
+
+
+# ---------------------------------------------------------------------------
+# XHTML → 마크다운 변환 (HWP/향후 DOCX HTML 변환 등에 공용)
+# ---------------------------------------------------------------------------
+
+def _xhtml_to_markdown(html: str) -> str:
+    """XHTML 문자열을 마크다운 텍스트로 변환.
+
+    - <p>: 단락 텍스트
+    - <table>: 마크다운 테이블 (중첩 표는 셀 내부 텍스트로 flatten)
+    - 표 안의 <p>는 표 셀이 흡수하므로 최상위 레벨에서 중복되지 않도록 스킵
+    """
+    import warnings
+    from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+    soup = BeautifulSoup(html, "lxml")
+    body = soup.find("body")
+    if body is None:
+        return ""
+
+    parts = []
+    # 상위 표가 이미 처리한 자식 요소는 스킵
+    processed = set()
+
+    for elem in body.find_all(["p", "table"]):
+        # 다른 table/p의 하위면 스킵 (상위 요소가 처리)
+        if any(id(ancestor) in processed for ancestor in elem.parents):
+            continue
+
+        if elem.name == "table":
+            md = _html_table_to_markdown(elem)
+            if md:
+                parts.append(md)
+            # 이 표의 모든 하위 요소를 처리됨으로 마킹
+            processed.add(id(elem))
+            for descendant in elem.descendants:
+                if hasattr(descendant, "name"):
+                    processed.add(id(descendant))
+        elif elem.name == "p":
+            text = elem.get_text(separator=" ", strip=True)
+            if text:
+                parts.append(text)
+
+    return "\n\n".join(parts)
+
+
+def _html_table_to_markdown(table_elem) -> str:
+    """BeautifulSoup <table> 요소를 마크다운 표 문자열로 변환.
+
+    중첩 표 처리: 셀 내부의 텍스트만 flatten하여 추출 (중첩 table 자체는 무시).
+    """
+    rows = []
+    for tr in table_elem.find_all("tr", recursive=True):
+        # 이 tr이 우리 표의 직접 자식인지 확인 (중첩 table의 tr 제외)
+        # tr의 가장 가까운 table 조상이 현재 table_elem과 같아야 함
+        closest_table = tr.find_parent("table")
+        if closest_table is not table_elem:
+            continue
+
+        cells = []
+        for cell in tr.find_all(["td", "th"], recursive=False):
+            text = cell.get_text(separator=" ", strip=True).replace("|", "\\|")
+            cells.append(text)
+        if cells:
+            rows.append(cells)
+
+    if not rows:
+        return ""
+
+    # 열 수 정규화
+    max_cols = max(len(row) for row in rows)
+    normalized = [row + [""] * (max_cols - len(row)) for row in rows]
+
+    lines = []
+    lines.append("| " + " | ".join(normalized[0]) + " |")
+    lines.append("| " + " | ".join(["---"] * max_cols) + " |")
+    for row in normalized[1:]:
+        lines.append("| " + " | ".join(row) + " |")
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

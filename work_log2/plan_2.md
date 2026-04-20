@@ -569,8 +569,8 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [x] PDF 파서 (pdfplumber) — Claude API base64 직접 전달도 지원
 - [x] HWPX 파서 (lxml — XML 직접 파싱, 마크다운 변환, 표 추출)
 - [x] DOCX 파서 (python-docx)
-- [x] HWP(구형) 변환 시도 (pywin32, 실패 시 스킵)
-- [x] 실제 공고 첨부파일로 파싱 테스트 (PDF 12건, HWPX 1건, DOCX 1건)
+- [x] HWP(구형) 파서 — pyhwp(1차, 한/글 불필요) + 한/글 COM(2차 폴백) + XHTML→마크다운 변환
+- [x] 실제 공고 첨부파일로 파싱 테스트 (PDF 12건, HWPX 1건, DOCX 1건, HWP 3건 — 평가기준 표 추출 검증)
 
 #### C-2: 프로필 항목 확정 + UI ✅
 파싱 결과로 평가기준 패턴을 분석한 후 프로필 항목을 확정.
@@ -599,13 +599,40 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [ ] [프로필 수정 후 재분석] 팝업 → 프로필 반영 여부 확인
 - [ ] 크레딧 충전/사용이력 UI (설정 페이지)
 
-#### C-5: 제안서 AI 생성 (추후)
-- [ ] 예시 제안서 + 공고 내용 → Claude API로 초안 생성
+#### C-5: 마스터 프로필 추출기 (ProposalAssetExtractor) — 설계 확정 2026-04-20
+
+> 상세 설계: `work_log2/design_phase_c_extractor.md`
+
+과거 제안서(HWP/PDF/DOCX/PPTX)에서 회사의 정성적 역량 정보를 AI로 추출해 **Claim(역량 진술)** 단위로 구조화. 공고 매칭 + 제안서 재활용 두 용도에 사용.
+
+- **Claim 카테고리 (6종):** Identity / Methodology / USP / Philosophy / Story / Operational
+- **하이브리드 파이프라인:** Python(파싱·섹션분할·중복병합) + LLM(claim 추출·분류)
+- **bidwatch 이식 타깃:** `backend/extractors/` 디렉토리 전체를 portable하게 설계 (file_parser와 동일 수준)
+- **비용:** 제안서 5건 초기 세팅 ~825원 (prompt caching 적용), 운영 희석률 1~2%
+
+##### MVP 범위 (1·2·3단계)
+- [x] `backend/extractors/base.py` + `proposal.py` 클래스 작성 (2026-04-20)
+- [x] 샘플 HWP 섹션 분할 + LLM 추출 + JSON 출력 검증 — 경과원 ESG HWP 34 claim 추출, 471원/건 (설계 예상 490원과 일치)
+- [x] DB 스키마: `claims`, `proposal_sources`, `proposal_quantitative_hints` 테이블 (2026-04-20)
+- [x] API: `backend/routers/extractor.py` — 소스 CRUD + claim 편집/일괄승인/병합/병합제안 (11개) (2026-04-20)
+- [x] UI 1·2·3단계: 설정 > 회사 프로필 > 역량 자산 탭 — 업로드 폼 + 소스 진행률(폴링) + Claim 검토·편집·일괄승인·병합 (2026-04-20)
+- [x] E2E 검증 — 경과원 ESG 제안서 업로드부터 claim 36개 추출·편집·승인·삭제까지 전 플로우 통과 (482.7원, 2026-04-20)
+- [x] Prompt caching 적용 — `BaseAIClient.analyze_document(system=, use_cache=)` 확장, 프롬프트 2파일 분리. 실측 482.7원 → 445.9원 (-7.6%). 설계 예상(65%)보다 작음 — 섹션 본문이 고정 프롬프트의 4배라 희석 (2026-04-20)
+
+##### Phase C 후반 (MVP 이후)
+- [ ] 공고 분석에 "사용된 claim" 연결 표시 — 4단계
+- [ ] 증분 업로드 diff 뷰 — 5단계
+- [ ] Haiku 전환 품질 실험
+- [ ] 임베딩 기반 중복 병합 (초기엔 fuzzy string)
+- [ ] 결과보고서/회사소개서용 추출기 추가 (`ResultReportExtractor` 등)
+
+#### C-6: 제안서 AI 생성 (추후)
+- [ ] C-5에서 구축한 claim 라이브러리 + 공고 내용 → Claude API로 초안 생성
 - [ ] DOCX/PDF 출력 (python-docx → docx2pdf)
 - [ ] HWPX 출력 — gonggong_hwpxskills 활용 검토
 - [ ] 프롬프트 관리 (`backend/prompts/proposal.md`)
 
-#### C-6: AI 스크래핑 (추후)
+#### C-7: AI 스크래핑 (추후)
 - [ ] 새 사이트/안 되는 사이트 대응 — URL + 프롬프트로 공고 수집 → DB 저장
   - 1회성 분석 또는 구조가 자주 바뀌는 사이트에 활용
 
@@ -784,6 +811,12 @@ Phase 1~3은 plan.md에서 진행 완료 후, plan_2로 확장됨.
 - `work_log2/log_phaseB1.md` — Phase B-1 (첨부파일 수집)
 - `work_log2/log_phase_rebuilding.md` — Phase Rebuilding (코드 구조 리빌딩)
 - `work_log2/log_release_v1.md` — release/v1 분기 및 exe 빌드
+- `work_log2/log_phaseC.md` — Phase C-1~C-4 (AI 공고 분석)
+- `work_log2/log_phaseC5.md` — Phase C-5 (마스터 프로필 추출기)
+
+**Plan 2 설계 문서:**
+- `work_log2/design_phase_c_ai.md` — Phase C-1~C-4 (AI 공고 분석 엔진)
+- `work_log2/design_phase_c_extractor.md` — Phase C-5 (ProposalAssetExtractor)
 
 ## 9. 롤백 방법 (기존 Phase 3 상태로 복원)
 

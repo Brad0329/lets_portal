@@ -2,9 +2,14 @@
 # LETS 프로젝트 관리 시스템 — PyInstaller 빌드 설정
 
 import os
+from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 base_dir = os.path.abspath('.')
+
+# pyhwp는 XSL/RNG/locale 리소스 파일을 패키지 내부에 포함함
+# PyInstaller로 번들링 시 datas에 추가해야 런타임에 XHTML 변환이 동작
+hwp5_datas = collect_data_files('hwp5', includes=['xsl/*', 'odf-relaxng/*', 'locale/**/*'])
 
 a = Analysis(
     ['backend/main.py'],
@@ -12,7 +17,7 @@ a = Analysis(
         os.path.join(base_dir, 'backend'),
     ],
     binaries=[],
-    datas=[],
+    datas=hwp5_datas,
     hiddenimports=[
         'uvicorn',
         'uvicorn.logging',
@@ -72,6 +77,17 @@ a = Analysis(
         'utils.dates',
         'utils.keywords',
         'utils.status',
+        'utils.file_parser',
+        # HWP 파싱 — pyhwp + BS4 (한/글 프로그램 불필요)
+        'hwp5',
+        'hwp5.hwp5html',
+        'hwp5.xmlmodel',
+        'hwp5.transforms',
+        'hwp5.plat',
+        'hwp5.plat._lxml',
+        'olefile',
+        # HTML 테이블 변환
+        'bs4',
     ],
     hookspath=[],
     hooksconfig={},

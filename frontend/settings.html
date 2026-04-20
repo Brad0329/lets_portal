@@ -80,11 +80,71 @@
         <!-- 회사 프로필 -->
         <section class="settings-section">
             <h2>🏢 회사 프로필</h2>
-            <p class="section-desc">AI 공고 분석 시 회사 역량과 평가기준을 매칭하는 데 사용됩니다.</p>
-            <div id="profile-container"></div>
-            <div style="margin-top:12px">
-                <button class="btn" onclick="saveProfile()">💾 프로필 저장</button>
-                <span id="profile-msg" class="msg"></span>
+
+            <div class="profile-tabs" style="display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
+                <button type="button" class="profile-tab active" data-profile-tab="quantitative" onclick="switchProfileTab('quantitative')"
+                    style="padding:8px 16px;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;cursor:pointer;color:#555">📊 정량 프로필</button>
+                <button type="button" class="profile-tab" data-profile-tab="assets" onclick="switchProfileTab('assets')"
+                    style="padding:8px 16px;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;cursor:pointer;color:#555">💡 역량 자산 (제안서 claim)</button>
+            </div>
+
+            <!-- 정량 프로필 (기존) -->
+            <div id="profile-tab-quantitative">
+                <p class="section-desc">AI 공고 분석 시 회사 역량과 평가기준을 매칭하는 데 사용됩니다.</p>
+                <div id="profile-container"></div>
+                <div style="margin-top:12px">
+                    <button class="btn" onclick="saveProfile()">💾 프로필 저장</button>
+                    <span id="profile-msg" class="msg"></span>
+                </div>
+            </div>
+
+            <!-- 역량 자산 (Phase C-5) -->
+            <div id="profile-tab-assets" style="display:none">
+                <p class="section-desc">과거 제안서를 업로드하면 AI가 회사의 정성적 역량(차별화·방법론·철학 등)을 claim 단위로 추출합니다.</p>
+
+                <div id="extractor-upload-panel" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
+                    <h3 style="font-size:14px;margin:0 0 12px;color:#1a5276">📤 제안서 업로드</h3>
+                    <form id="extractor-upload-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
+                        <div style="flex:2 1 240px;min-width:200px">
+                            <label style="display:block;font-size:12px;color:#555;margin-bottom:2px">파일 (PDF/HWP/HWPX/DOCX)</label>
+                            <input type="file" id="ex-file" accept=".pdf,.hwp,.hwpx,.docx" required style="width:100%;font-size:12px" />
+                        </div>
+                        <div style="flex:0 0 90px">
+                            <label style="display:block;font-size:12px;color:#555;margin-bottom:2px">연도</label>
+                            <input type="number" id="ex-year" min="2000" max="2099" required style="width:100%;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                        </div>
+                        <div style="flex:0 0 100px">
+                            <label style="display:block;font-size:12px;color:#555;margin-bottom:2px">결과</label>
+                            <select id="ex-awarded" required style="width:100%;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;box-sizing:border-box">
+                                <option value="true">수주</option>
+                                <option value="false">탈락</option>
+                            </select>
+                        </div>
+                        <div style="flex:1 1 200px;min-width:160px">
+                            <label style="display:block;font-size:12px;color:#555;margin-bottom:2px">발주처</label>
+                            <input type="text" id="ex-organization" required placeholder="예: 경기도경제과학진흥원" style="width:100%;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                        </div>
+                        <div style="flex:1 1 200px;min-width:160px">
+                            <label style="display:block;font-size:12px;color:#555;margin-bottom:2px">제안서명 (선택)</label>
+                            <input type="text" id="ex-title" placeholder="예: 2023 ESG 창업교육" style="width:100%;padding:6px 8px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                        </div>
+                        <button type="submit" class="btn" style="flex:0 0 auto">📤 업로드</button>
+                    </form>
+                    <div id="ex-upload-msg" class="msg" style="margin-top:8px"></div>
+                </div>
+
+                <div style="margin-bottom:16px">
+                    <h3 style="font-size:14px;margin:8px 0;color:#1a5276">📚 업로드된 제안서</h3>
+                    <div id="extractor-sources"><p style="color:#aaa;font-size:13px">로딩 중...</p></div>
+                </div>
+
+                <div id="extractor-claims-section" style="margin-top:24px;display:none">
+                    <h3 style="font-size:14px;margin:8px 0;color:#1a5276">💡 Claim 라이브러리</h3>
+                    <div id="extractor-claims-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0"></div>
+                    <div id="extractor-claims-tabs" style="display:flex;gap:4px;border-bottom:1px solid #e5e7eb;margin-bottom:8px;flex-wrap:wrap"></div>
+                    <div id="extractor-merge-panel" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;margin-bottom:12px"></div>
+                    <div id="extractor-claims-list"></div>
+                </div>
             </div>
         </section>
 
@@ -130,5 +190,6 @@
     <script src="/js/utils.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/settings.js"></script>
+    <script src="/js/extractor.js"></script>
 </body>
 </html>

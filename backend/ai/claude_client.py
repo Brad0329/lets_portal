@@ -14,21 +14,40 @@ class ClaudeClient(BaseAIClient):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
-    def analyze_document(self, document_text: str, prompt: str) -> AIResponse:
-        """텍스트 기반 문서 분석"""
+    def analyze_document(self, document_text: str, prompt: str,
+                         *, system=None, use_cache: bool = False) -> AIResponse:
+        """텍스트 기반 문서 분석.
+
+        system: system 프롬프트 (반복 호출 시 공통 부분). use_cache=True면
+            ephemeral cache_control 마커를 붙여 Anthropic prompt caching 활용.
+        """
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                messages=[{
+            kwargs = {
+                "model": self.model,
+                "max_tokens": 4096,
+                "messages": [{
                     "role": "user",
-                    "content": f"{prompt}\n\n---\n\n{document_text}"
+                    "content": f"{prompt}\n\n---\n\n{document_text}",
                 }],
-            )
+            }
+            if system:
+                if use_cache:
+                    kwargs["system"] = [{
+                        "type": "text",
+                        "text": system,
+                        "cache_control": {"type": "ephemeral"},
+                    }]
+                else:
+                    kwargs["system"] = system
+
+            response = self.client.messages.create(**kwargs)
+            usage = response.usage
             return AIResponse(
                 content=response.content[0].text,
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+                cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+                cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
                 model=self.model,
                 success=True,
             )

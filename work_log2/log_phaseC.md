@@ -29,6 +29,61 @@
 - `python-docx` — DOCX 파싱
 - `lxml` — 기존 설치됨, HWPX XML 파싱에 활용
 
+## C-1 보강: HWP 구형 포맷 대응 (2026-04-17)
+
+### 배경
+
+- 초기 설계: HWP는 한/글 COM 자동화 시도 → 실패 시 스킵
+- 문제: **납품 환경/개발 환경에 한/글 미설치 시 HWP 공고 첨부 분석 불가**
+- 실 데이터 검증: 사용자 제안서 샘플 3건(공고문/제안요청서/제안서) 전부 HWP 바이너리 → COM 실패
+
+### 결정사항
+
+1. **pyhwp 1차 + 한/글 COM 2차 폴백 구조 채택** — 한/글 없는 PC에서도 HWP 파싱 가능.
+   - pyhwp의 `HTMLTransform.transform_hwp5_to_dir` API 사용 (subprocess 아님 → PyInstaller 호환)
+   - 추출된 XHTML을 BeautifulSoup로 파싱하여 마크다운 변환
+   - 한/글이 설치된 환경에서는 COM이 품질 더 나을 수 있어 폴백 유지
+2. **한컴테크 공식 블로그 가이드 방식과 동일 경로** — 한컴이 직접 공개한 "Python으로 HWP 파싱" 가이드의 `olefile`+`zlib` 접근이 pyhwp로 이미 구현되어 있음. 라이선스/저작권 이슈 없음.
+3. **XHTML→마크다운 변환기를 별도 함수로 분리** (`_xhtml_to_markdown`, `_html_table_to_markdown`) — 향후 DOCX의 HTML 변환 등에도 재사용 가능.
+4. **이식성 유지** — 파일 전체가 독립 모듈. 프로젝트 특정 import 없음. bidwatch 등에 복사만 하면 동작.
+
+### 실패한 접근
+
+- **한글 뷰어 (무료) 검토 → 제외** — 무료 뷰어는 `HWPFrame.HwpObject` COM을 제공하지 않거나 매우 제한적. 현재 코드 동작 안 함.
+- **`transform_hwp5_to_xhtml` 직접 호출 → 실패** — pyhwp 내부에서 output 인자로 stream을 요구하는데 파일 경로 문자열 전달 시 `AttributeError: 'str' object has no attribute 'write'`. `transform_hwp5_to_dir`가 올바른 API.
+- **`with Hwp5File(...)` context manager → 실패** — Hwp5File은 context manager 프로토콜 미지원. 직접 생성만 가능.
+
+### 외부 제약
+
+- **pyhwp 번들 리소스 필요** — `hwp5/xsl/*.xsl`, `hwp5/odf-relaxng/*.rng`, `hwp5/locale/**/*.mo` 파일들을 런타임에 로드. PyInstaller 빌드 시 `collect_data_files('hwp5', ...)` 로 datas에 포함 필요.
+- **HWP 5.0 이후 포맷만 지원** — HWP 3.0(2007년 이전)은 미지원. 실무 케이스 거의 없음.
+- **암호화 HWP, 스캔본 HWP** — 파싱 불가 (모든 파서 공통).
+
+### 테스트 결과 (사용자 제공 제안서 샘플)
+
+| 파일 | 크기 | 결과 | 표 마크다운 라인 수 | 비고 |
+|------|------|------|-------------------|------|
+| 공고문.hwp | 98KB | ✅ 4,312자 | 4줄 | 텍스트 본문 추출 양호 |
+| 제안요청서.hwp | 300KB | ✅ 35,547자 | 222줄 | **평가기준 표(배점 5/15/10 등) 완벽 추출** |
+| 제안서.hwp | 8.5MB | ✅ 60,823자 | 575줄 | 대형 제안서 무리 없이 처리 |
+
+- 평가기준 추출 예시:
+  ```
+  | 구 분 | 평가항목 | 평가요소 | 배점 한도 | 비고 |
+  | 기술능력평가 | 정량적 평가분야 | 관련 수행실적 | 5 | |
+  | 정성적 평가분야 | ▪ 과업 이해도 | ... | 15 | |
+  ```
+  → Phase C 매칭 분석에 필요한 배점/항목 정보 그대로 활용 가능
+
+### 신규 의존성
+
+- `pyhwp` (0.1b15) — olefile+zlib+XSLT로 HWP→XHTML 변환
+- `beautifulsoup4` — XHTML→마크다운 테이블 변환
+
+### 이식 경로 (bidwatch 등 외부 프로젝트)
+
+`backend/utils/file_parser.py` 파일 1개만 복사 + 의존성 설치로 동작. 프로젝트 특정 모듈 import 없음. 인터페이스: `extract_text(path) -> ParseResult`.
+
 ## C-2: 프로필 항목 확정 + UI (2026-04-16)
 
 ### 결정사항

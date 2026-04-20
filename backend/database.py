@@ -404,10 +404,90 @@ def init_db():
         except Exception:
             pass
 
+    # Phase C-5: 마스터 프로필 추출기 — 제안서 소스
+    # extractor의 SourceMeta와 매핑 (src_id UNIQUE). 진행 상태/비용을 DB에 적재하여
+    # 다른 세션에서도 상태 조회 가능. 파일 자체는 data/proposals_assets/{src_id}/에 저장.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS proposal_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            src_id TEXT UNIQUE NOT NULL,
+            file_path TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            proposal_title TEXT,
+            organization TEXT,
+            year INTEGER,
+            awarded INTEGER,
+            status TEXT DEFAULT 'pending',
+            progress REAL DEFAULT 0,
+            total_sections INTEGER DEFAULT 0,
+            processed_sections INTEGER DEFAULT 0,
+            current_section TEXT,
+            cost_krw REAL DEFAULT 0,
+            input_tokens INTEGER DEFAULT 0,
+            output_tokens INTEGER DEFAULT 0,
+            model TEXT,
+            error_message TEXT,
+            uploaded_by INTEGER REFERENCES users(id),
+            uploaded_at TEXT DEFAULT (datetime('now','localtime')),
+            completed_at TEXT
+        )
+    """)
+
+    # Phase C-5: 추출된 claim (6개 카테고리)
+    # claim_id는 content-derived MD5 — 재실행/증분 업로드 시에도 안정적 매핑.
+    # user_verified: 0=미검토, 1=승인, 2=거부/병합됨(UI에서 숨김).
+    # merged_from JSON — 여러 claim을 병합한 경우 원본 claim_id 보존.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            claim_id TEXT UNIQUE NOT NULL,
+            proposal_source_id INTEGER REFERENCES proposal_sources(id),
+            category TEXT NOT NULL,
+            statement TEXT NOT NULL,
+            tags TEXT,
+            proposal_sections TEXT,
+            length_variants TEXT,
+            evidence_refs TEXT,
+            source_section TEXT,
+            source_page INTEGER,
+            source_start_line INTEGER,
+            recurrence INTEGER DEFAULT 1,
+            confidence REAL DEFAULT 0.8,
+            user_verified INTEGER DEFAULT 0,
+            merged_from TEXT,
+            user_edited_statement TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+
+    # Phase C-5: 정량 힌트 (실적/인증/등록/특허/자격)
+    # claims와 별개로 관리 — 사용자가 company_profile의 project_history / patents_certs에
+    # 수동으로 편입하는 후보 리스트.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS proposal_quantitative_hints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_source_id INTEGER REFERENCES proposal_sources(id),
+            type TEXT,
+            name TEXT NOT NULL,
+            year INTEGER,
+            organization TEXT,
+            section TEXT,
+            extractor TEXT,
+            user_action TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+
     # 인덱스
     try:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_analyses_notice ON ai_analyses(notice_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_credits_type ON ai_credits(type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_claims_category ON claims(category)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_claims_source ON claims(proposal_source_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_claims_verified ON claims(user_verified)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_proposal_sources_status ON proposal_sources(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_quant_hints_source ON proposal_quantitative_hints(proposal_source_id)")
     except Exception:
         pass
 

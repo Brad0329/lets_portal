@@ -8,4 +8,7 @@ bcrypt
 pdfplumber
 python-docx
 lxml
+beautifulsoup4
+pyhwp
 anthropic
+python-multipart

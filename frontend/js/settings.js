@@ -417,6 +417,28 @@ async function changeMyPw() {
     }
 }
 
+// ─── 회사 프로필 탭 전환 ────────────────────
+function switchProfileTab(tabName) {
+    document.querySelectorAll('.profile-tab').forEach(btn => {
+        const active = btn.dataset.profileTab === tabName;
+        btn.classList.toggle('active', active);
+        btn.style.borderBottomColor = active ? '#2980b9' : 'transparent';
+        btn.style.color = active ? '#2980b9' : '#555';
+        btn.style.fontWeight = active ? '600' : '400';
+    });
+    document.getElementById('profile-tab-quantitative').style.display = tabName === 'quantitative' ? '' : 'none';
+    document.getElementById('profile-tab-assets').style.display = tabName === 'assets' ? '' : 'none';
+
+    if (tabName === 'assets' && typeof initExtractor === 'function') {
+        initExtractor();
+    }
+}
+
+// 초기 탭 스타일 적용 (DOMContentLoaded 후)
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => switchProfileTab('quantitative'), 0);
+});
+
 // ─── 회사 프로필 ─────────────────────────────
 
 let profileData = [];
