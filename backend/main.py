@@ -12,6 +12,7 @@ import os
 
 from database import init_db
 from routers import auth, users, notices, tags, settings, keywords, sources, collection, organizations, ai, extractor
+from routers.extractor import cleanup_orphan_assets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -19,9 +20,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """앱 시작 시 DB 초기화"""
+    """앱 시작 시 DB 초기화 + orphan asset 정리"""
     init_db()
     logger.info("DB 초기화 완료")
+    removed = cleanup_orphan_assets()
+    if removed:
+        logger.info("orphan asset 디렉토리 %d건 정리", removed)
     yield
 
 

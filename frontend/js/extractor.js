@@ -15,6 +15,10 @@
     let _currentVerified = 0;       // 0=pending, 1=approved, 2=hidden, -1=all
     let _claimsCache = { claims: [], counts: {} };
     let _editingClaimId = null;
+    let _reportMode = false;
+    let _reportPrevFilters = null;  // 보고서 뷰 해제 시 원상 복구용
+    let _reportClaims = [];         // 보고서 모드 전용 캐시 (승인된 claim 전체)
+    let _sourcesCache = [];         // 최근 로드된 소스 목록 — 보고서 헤더용
 
     // -------- 초기화 --------
     window.initExtractor = function () {
@@ -73,8 +77,10 @@
             const res = await fetch(`${API}/sources`);
             if (!res.ok) return;
             const data = await res.json();
-            renderSources(data.sources || []);
-            scheduleSourcesPoll(data.sources || []);
+            _sourcesCache = data.sources || [];
+            renderSources(_sourcesCache);
+            scheduleSourcesPoll(_sourcesCache);
+            if (_reportMode) renderReportView();  // 보고서 뷰의 헤더 메타 갱신
         } catch (e) {
             console.error('sources 로드 실패:', e);
         }
@@ -192,12 +198,33 @@
         }
         section.style.display = '';
 
+        if (_reportMode) {
+            renderToolbar(counts, totalAll);
+            document.getElementById('extractor-claims-tabs').innerHTML = '';
+            document.getElementById('extractor-merge-panel').style.display = 'none';
+            renderReportView();
+            return;
+        }
+
         renderToolbar(counts, totalAll);
         renderCategoryTabs(counts, totalAll);
         renderClaimCards(_claimsCache.claims || []);
     }
 
     function renderToolbar(counts, totalAll) {
+        const toolbar = document.getElementById('extractor-claims-toolbar');
+
+        if (_reportMode) {
+            const approvedTotal = Object.values(counts).reduce((s, c) => s + (c.approved || 0), 0);
+            toolbar.innerHTML = `
+                <div style="font-size:13px;color:#1a5276;font-weight:600">📄 보고서 뷰 — 승인된 claim ${approvedTotal}건</div>
+                <div style="flex:1"></div>
+                <button type="button" class="btn btn-sm" onclick="extractorPrintReport()">🖨️ 인쇄 / PDF 저장</button>
+                <button type="button" class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="extractorToggleReportView()">← 편집 뷰로</button>
+            `;
+            return;
+        }
+
         const pendingTotal = Object.values(counts).reduce((s, c) => s + (c.pending || 0), 0);
         const approvedTotal = Object.values(counts).reduce((s, c) => s + (c.approved || 0), 0);
         const hiddenTotal = Object.values(counts).reduce((s, c) => s + (c.hidden || 0), 0);
@@ -214,10 +241,15 @@
                 style="padding:4px 10px;border:1px solid ${o.color};background:${active ? o.color : 'transparent'};color:${active ? '#fff' : o.color};border-radius:14px;font-size:12px;cursor:pointer;font-weight:600">${o.label}</button>`;
         }).join('');
 
-        const toolbar = document.getElementById('extractor-claims-toolbar');
+        const reportDisabled = approvedTotal === 0;
+        const reportBtn = `<button type="button" class="btn btn-sm"
+            ${reportDisabled ? 'disabled title="승인된 claim이 없습니다" style="opacity:0.5;cursor:not-allowed"' : ''}
+            onclick="extractorToggleReportView()">📄 보고서 뷰</button>`;
+
         toolbar.innerHTML = `
             <div style="display:flex;gap:6px">${verifiedBtns}</div>
             <div style="flex:1"></div>
+            ${reportBtn}
             <button type="button" class="btn btn-sm" onclick="extractorBulkApproveHighConf()">🤖 신뢰도 0.9+ 일괄 승인</button>
             <button type="button" class="btn btn-sm" onclick="extractorLoadMergeSuggestions()">🔁 병합 제안</button>
         `;
@@ -329,6 +361,137 @@
         };
         return colors[cat] || { bg: '#f3f4f6', fg: '#6b7280' };
     }
+
+    // -------- 보고서 뷰 --------
+    function renderReportView() {
+        const list = document.getElementById('extractor-claims-list');
+        const approved = (_reportClaims || []).filter(c => c.user_verified === 1);
+
+        if (!approved.length) {
+            list.innerHTML = '<p style="color:#888;font-size:13px;padding:16px">승인된 claim이 없습니다. 편집 뷰에서 먼저 승인해주세요.</p>';
+            return;
+        }
+
+        const buckets = {};
+        CATEGORIES.forEach(c => { buckets[c] = []; });
+        approved.forEach(c => {
+            (buckets[c.category] || (buckets[c.category] = [])).push(c);
+        });
+        // 각 카테고리 내 정렬: recurrence DESC, confidence DESC
+        Object.values(buckets).forEach(arr =>
+            arr.sort((a, b) => (b.recurrence || 0) - (a.recurrence || 0) || (b.confidence || 0) - (a.confidence || 0))
+        );
+
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
+
+        const completedSrcs = (_sourcesCache || []).filter(s => s.status === 'completed');
+        const sourcesHtml = completedSrcs.length
+            ? completedSrcs.map(s => {
+                const title = s.proposal_title || s.file_name || s.src_id;
+                const bits = [];
+                if (s.year) bits.push(`${s.year}년`);
+                if (s.organization) bits.push(escapeHtml(s.organization));
+                if (typeof s.awarded === 'number' || typeof s.awarded === 'boolean') {
+                    bits.push(s.awarded ? '수주' : '탈락');
+                }
+                return `<div>📄 ${escapeHtml(title)}${bits.length ? ` <span style="color:#9ca3af">· ${bits.join(' · ')}</span>` : ''}</div>`;
+            }).join('')
+            : '<div style="color:#9ca3af">완료된 제안서 정보 없음</div>';
+
+        const categoryBlocks = CATEGORIES
+            .filter(cat => (buckets[cat] || []).length > 0)
+            .map(cat => {
+                const arr = buckets[cat];
+                const color = categoryColor_(cat);
+                const items = arr.map(c => renderReportClaim(c)).join('');
+                return `<section class="report-category" style="--cat-color:${color.fg};--cat-bg:${color.bg}">
+                    <div class="report-category-header">
+                        <h2>${CATEGORY_LABEL[cat] || cat}</h2>
+                        <span class="report-category-count">${arr.length}건</span>
+                    </div>
+                    ${items}
+                </section>`;
+            }).join('');
+
+        list.innerHTML = `
+            <div class="report-header">
+                <h1>💡 회사 역량 자산 보고서</h1>
+                <div class="report-meta">
+                    <div><strong>생성일:</strong> ${dateStr} &nbsp;·&nbsp; <strong>승인 claim:</strong> ${approved.length}건 &nbsp;·&nbsp; <strong>카테고리:</strong> ${Object.values(buckets).filter(a => a.length).length}개</div>
+                    <div class="report-sources"><strong>기반 제안서 (${completedSrcs.length}건)</strong>${sourcesHtml}</div>
+                </div>
+            </div>
+            ${categoryBlocks}
+            <div class="report-footer">LETS 프로젝트 관리 시스템 · Phase C-5 ProposalAssetExtractor</div>
+        `;
+    }
+
+    function renderReportClaim(c) {
+        const color = categoryColor_(c.category);
+        const statement = c.user_edited_statement || c.statement || '';
+        const tags = c.tags || {};
+        const allTags = [].concat(tags.domain || [], tags.audience || [], tags.method || []);
+        const tagsHtml = allTags.map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+        const variants = c.length_variants || {};
+        const summary = variants.summary;
+        const sections = (c.proposal_sections || []).map(escapeHtml).join(', ');
+
+        const metaBits = [];
+        if (tagsHtml) metaBits.push(tagsHtml);
+        if (sections) metaBits.push(`<span>📑 ${sections}</span>`);
+        if (c.recurrence > 1) metaBits.push(`<span style="color:#7c3aed">반복 ×${c.recurrence}</span>`);
+
+        return `<div class="report-claim" style="--cat-color:${color.fg}">
+            <div class="report-claim-statement">${escapeHtml(statement)}</div>
+            ${summary && summary !== statement ? `<div class="report-claim-meta variant">→ ${escapeHtml(summary)}</div>` : ''}
+            ${metaBits.length ? `<div class="report-claim-meta">${metaBits.join(' &nbsp;·&nbsp; ')}</div>` : ''}
+        </div>`;
+    }
+
+    async function loadReportClaims() {
+        // 보고서 뷰 — 승인된 claim 전체를 한 번에 로드 (필터 무시)
+        try {
+            const res = await fetch(`${API}/claims?verified=1`);
+            if (!res.ok) return;
+            const data = await res.json();
+            _reportClaims = data.claims || [];
+            // counts 캐시에 승인 총계 반영되도록 _claimsCache도 업데이트 (renderToolbar 표시용)
+            _claimsCache.counts = data.counts || _claimsCache.counts;
+        } catch (e) {
+            console.error('report claims 로드 실패:', e);
+            _reportClaims = [];
+        }
+    }
+
+    window.extractorToggleReportView = async function () {
+        if (_reportMode) {
+            // OFF — 이전 필터 복원
+            _reportMode = false;
+            document.body.classList.remove('extractor-report-mode');
+            if (_reportPrevFilters) {
+                _currentCategory = _reportPrevFilters.category;
+                _currentVerified = _reportPrevFilters.verified;
+                _reportPrevFilters = null;
+            }
+            await loadClaims();
+            return;
+        }
+        // ON — 현재 필터 저장 + 승인된 claim 전체 로드
+        _reportPrevFilters = { category: _currentCategory, verified: _currentVerified };
+        _reportMode = true;
+        _editingClaimId = null;
+        document.body.classList.add('extractor-report-mode');
+        await loadReportClaims();
+        renderClaims();
+        // 상단으로 스크롤 — 보고서 헤더가 보이도록
+        const section = document.getElementById('extractor-claims-section');
+        if (section && section.scrollIntoView) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.extractorPrintReport = function () {
+        window.print();
+    };
 
     // -------- Claim 액션 --------
     window.extractorSwitchCategory = function (cat) {

@@ -626,6 +626,66 @@ ALTER TABLE keywords ADD COLUMN source_id INTEGER REFERENCES collect_sources(id)
 - [ ] 임베딩 기반 중복 병합 (초기엔 fuzzy string)
 - [ ] 결과보고서/회사소개서용 추출기 추가 (`ResultReportExtractor` 등)
 
+#### C-5-B: 회사 프로필 자동 채우기 (통합 업로드 흐름) — 설계 확정 2026-04-20
+
+> 상세 설계: `work_log2/design_phase_c5b_profile_autofill.md`
+
+C-5에서 claim·정량 힌트를 모두 추출하지만 힌트는 DB에만 쌓이고 정량 프로필(`company_profile`)로 반영되는 통로가 없었음. 이 gap을 "제안서 한 번 업로드 → 정량 + 역량 동시 자동 채우기" UX로 통합.
+
+##### 동기
+- 역량 자산 탭을 모르는 사용자도 설정 > 회사 프로필 진입 시 **업로드 카드 1개만 보고 프로필을 채울 수 있어야** 한다
+- `proposal_quantitative_hints` 44건이 고아로 쌓인 상태(라스트마일 공백) — 자동 편입 루트 필요
+- 역량 자산 탭의 세밀 편집 UI(승인/숨김/병합)는 그대로 유지. 본 흐름은 "초안 작성" 입구
+
+##### 흐름
+```
+설정 > 회사 프로필
+  ┌─ 🚀 제안서로 프로필 자동 채우기 ─┐
+  │  [파일] [연도] [결과] [발주처] [분석]│
+  └──────────────────────────────────┘
+  ↓ 분석 진행률 (기존 ProposalAssetExtractor 재사용)
+  ↓ 완료
+  ┌─ ✨ 분석 결과 미리보기 모달 ─┐
+  │  📊 정량 17건: ☑회사명 ☑인증 ☐오탐│
+  │  💡 역량 36건: USP 14 · 방법론 7 …│
+  │  [병합 규칙] ○덮어쓰기 ●빈칸만  │
+  │                  [취소] [반영]    │
+  └────────────────────────────────┘
+  ↓ 반영
+  정량 프로필 카드 + 역량 자산 탭 동시 업데이트
+```
+
+##### 핵심 원칙 3가지
+1. **자동 반영 금지 — 미리보기 한 단계 필수** — 제안서엔 오탐·과장·만료된 정보가 섞임. 사용자 선택 없이 `company_profile`에 들어가면 공고 매칭 점수까지 오염. 신뢰도 0.9+만 기본 체크.
+2. **기본 병합 규칙은 "빈 칸만 채우기"** — 기존에 수동 입력한 값을 덮어쓰지 않음. JSON 배열 필드(`project_history`, `patents_certs`)는 중복 체크 후 추가.
+3. **역량 자산 탭은 유지** — 본 흐름은 "첫 세팅/빠른 업데이트" 입구. 여러 제안서 업로드·claim 개별 편집·병합은 계속 역량 자산 탭에서.
+
+##### 정량 힌트 → 정량 프로필 매핑 (실제 company_profile 스키마 기준)
+| 힌트 type | company_profile 키 | 타입 | 동작 |
+|----------|-------------------|------|-----|
+| `실적` | `project_history` | JSON 배열 `[{name,client,amount,period,role}]` | name 기준 중복 체크 후 append |
+| `인증`·`등록`·`자격` | `patents_certs` | textarea (단일 텍스트) | 줄 단위 중복 체크 후 개행 append |
+| `목표`·`예산` | 매핑 없음 | — | 현재 프로필 스키마 밖 → 무시 |
+
+- **`patents_certs`는 JSON 배열이 아니라 textarea 단일 필드**. MVP는 줄 단위로 누적하는 방식으로 구현. 향후 JSON 배열화 검토 별건.
+- 회사명·대표자 같은 **기본정보 단일값은 힌트 type으로 안 잡힘**. 필요 시 extract 프롬프트에 "기본 회사 정보" type 추가 (후속).
+
+##### MVP 구현 항목
+- [ ] `POST /api/ai/extractor/apply-to-profile` — body: `{source_id, hint_ids:[...], claim_verified_ids:[...], merge_mode:"fill_empty"|"overwrite"}`
+  - 힌트는 매핑 규칙대로 `company_profile` 병합
+  - claim은 선택된 것을 `user_verified=1`로 일괄 승인 (역량 자산 탭과 동일 효과)
+  - 응답: `{profile_updates:{...}, claims_approved:N, skipped:[...]}`
+- [ ] `GET /api/ai/extractor/preview/{src_id}` — 미리보기 모달용 요약 (힌트 목록 + claim 카테고리 분포 + 중복 감지 결과)
+- [ ] 프론트: 회사 프로필 섹션 상단에 "자동 채우기" 카드 (업로드 폼 재사용)
+- [ ] 프론트: 미리보기 모달 (정량/역량 체크박스 + 병합 옵션 + 반영 버튼)
+- [ ] 프론트: 반영 후 `profile-container`와 역량 자산 탭 클레임 목록 동시 리프레시
+- [ ] E2E: 기존 src_0002로 정량 프로필 신규 채우기 → 프로필 덮어쓰기 방지 검증
+
+##### 제외 (후속)
+- 회사 기본정보(회사명·매출·인력 등) LLM 별도 추출 — 현재 힌트 type으로는 못 잡음
+- claim에서 정량 프로필로의 자동 유추 (claim 본문의 수치 파싱) — 정규식 이미 있음, 품질 재평가 필요
+- 여러 제안서 일괄 업로드 → 통합 미리보기 (현재는 1건씩)
+
 #### C-6: 제안서 AI 생성 (추후)
 - [ ] C-5에서 구축한 claim 라이브러리 + 공고 내용 → Claude API로 초안 생성
 - [ ] DOCX/PDF 출력 (python-docx → docx2pdf)
@@ -812,11 +872,12 @@ Phase 1~3은 plan.md에서 진행 완료 후, plan_2로 확장됨.
 - `work_log2/log_phase_rebuilding.md` — Phase Rebuilding (코드 구조 리빌딩)
 - `work_log2/log_release_v1.md` — release/v1 분기 및 exe 빌드
 - `work_log2/log_phaseC.md` — Phase C-1~C-4 (AI 공고 분석)
-- `work_log2/log_phaseC5.md` — Phase C-5 (마스터 프로필 추출기)
+- `work_log2/log_phaseC5.md` — Phase C-5 (마스터 프로필 추출기) + C-5-B (회사 프로필 자동 채우기)
 
 **Plan 2 설계 문서:**
 - `work_log2/design_phase_c_ai.md` — Phase C-1~C-4 (AI 공고 분석 엔진)
 - `work_log2/design_phase_c_extractor.md` — Phase C-5 (ProposalAssetExtractor)
+- `work_log2/design_phase_c5b_profile_autofill.md` — Phase C-5-B (통합 자동 채우기)
 
 ## 9. 롤백 방법 (기존 Phase 3 상태로 복원)
 

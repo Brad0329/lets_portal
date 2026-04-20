@@ -409,13 +409,44 @@ def delete_source(request: Request, src_id: str):
     conn.close()
 
     src_dir = _ASSETS_DIR / src_id
+    file_cleanup_ok = True
     if src_dir.exists():
         try:
             shutil.rmtree(src_dir)
-        except Exception:
-            logger.warning("디렉토리 삭제 실패: %s", src_dir)
+        except Exception as e:
+            # Windows 파일 잠금 등으로 실패하면 응답에 담아 UI가 재시도 안내 가능
+            logger.warning("디렉토리 삭제 실패 src_dir=%s err=%r", src_dir, e)
+            file_cleanup_ok = False
 
-    return {"success": True}
+    return {"success": True, "file_cleanup_ok": file_cleanup_ok}
+
+
+def cleanup_orphan_assets() -> int:
+    """DB에 없는 proposals_assets/src_* 디렉토리를 제거. 반환: 삭제된 디렉토리 수."""
+    if not _ASSETS_DIR.exists():
+        return 0
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        known = {r["src_id"] for r in cur.execute("SELECT src_id FROM proposal_sources")}
+        conn.close()
+    except Exception as e:
+        logger.warning("orphan 정리: DB 조회 실패 err=%r", e)
+        return 0
+
+    removed = 0
+    for entry in _ASSETS_DIR.iterdir():
+        if not entry.is_dir():
+            continue
+        if entry.name in known:
+            continue
+        try:
+            shutil.rmtree(entry)
+            removed += 1
+            logger.info("orphan 디렉토리 제거: %s", entry)
+        except Exception as e:
+            logger.warning("orphan 디렉토리 제거 실패 path=%s err=%r", entry, e)
+    return removed
 
 
 # ---------------------------------------------------------------------------
@@ -770,3 +801,345 @@ def update_hint(request: Request, hint_id: int, body: dict):
     if not affected:
         raise HTTPException(status_code=404, detail="힌트를 찾을 수 없습니다.")
     return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# C-5-B: 회사 프로필 자동 채우기
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+# 힌트 type → company_profile.field_key 매핑
+_HINT_TO_PROJECT_HISTORY = {"실적"}
+_HINT_TO_PATENTS_CERTS = {"인증", "등록", "인증/등록", "자격", "특허"}
+
+_SUSPICIOUS_PATTERNS = [
+    _re.compile(r"등록\s*여부"),
+    _re.compile(r"등록증\s*번호"),
+    _re.compile(r"가능\s*여부"),
+    _re.compile(r"사업자\s*등록(?!증)"),
+]
+
+
+def _norm_text(s: str) -> str:
+    """중복 감지용 정규화 — 공백·구두점 제거, 소문자."""
+    if not s:
+        return ""
+    s = _re.sub(r"[\s,\.·\-\_\(\)\[\]]+", "", s)
+    return s.lower()
+
+
+def _is_suspicious(text: str) -> bool:
+    """오탐 의심 패턴 — 기본 해제 대상."""
+    if not text or len(text.strip()) < 6:
+        return True
+    for pat in _SUSPICIOUS_PATTERNS:
+        if pat.search(text):
+            return True
+    return False
+
+
+def _is_duplicate_project(new_name: str, existing: list) -> bool:
+    """project_history JSON 배열에서 name 중복 감지."""
+    new_key = _norm_text(new_name)
+    if not new_key:
+        return False
+    for ex in existing or []:
+        if not isinstance(ex, dict):
+            continue
+        ex_key = _norm_text(ex.get("name", ""))
+        if not ex_key:
+            continue
+        if new_key == ex_key:
+            return True
+        if len(new_key) >= 6 and len(ex_key) >= 6:
+            if new_key in ex_key or ex_key in new_key:
+                return True
+    return False
+
+
+def _is_duplicate_cert(new_line: str, existing_text: str, threshold: float = 0.85) -> bool:
+    """patents_certs textarea에서 줄 단위 fuzzy 중복 감지."""
+    new_key = _norm_text(new_line)
+    if not new_key or not existing_text:
+        return False
+    for line in existing_text.split("\n"):
+        ex_key = _norm_text(line)
+        if not ex_key:
+            continue
+        if new_key == ex_key:
+            return True
+        if SequenceMatcher(None, new_key, ex_key).ratio() >= threshold:
+            return True
+    return False
+
+
+def _load_profile_map(conn) -> dict:
+    """company_profile을 {field_key: (field_value, field_type)} dict로 로드."""
+    cur = conn.cursor()
+    cur.execute("SELECT field_key, field_value, field_type FROM company_profile")
+    return {r["field_key"]: (r["field_value"] or "", r["field_type"]) for r in cur.fetchall()}
+
+
+def _hint_to_project_item(h: dict) -> dict:
+    """실적 힌트 → project_history 배열 아이템."""
+    return {
+        "name": (h.get("name") or "").strip(),
+        "client": (h.get("organization") or "").strip(),
+        "amount": "",
+        "period": str(h.get("year") or ""),
+        "role": "",
+    }
+
+
+@router.get("/preview/{src_id}")
+def preview_autofill(request: Request, src_id: str):
+    """C-5-B: 업로드된 제안서의 정량 힌트·claim 요약 — 미리보기 모달용.
+
+    힌트를 매핑 규칙대로 분류하고, 기존 company_profile과 중복·오탐 감지 결과를 함께 반환.
+    """
+    require_login(request)
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # 소스 확인
+    cur.execute("SELECT * FROM proposal_sources WHERE src_id=?", (src_id,))
+    src_row = cur.fetchone()
+    if not src_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="제안서를 찾을 수 없습니다.")
+    if src_row["status"] != "completed":
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"추출이 완료되지 않았습니다 (현재 상태: {src_row['status']}).")
+    pid = src_row["id"]
+
+    # 기존 프로필 조회 — 중복 감지 기준
+    profile = _load_profile_map(conn)
+    existing_projects = []
+    try:
+        existing_projects = json.loads(profile.get("project_history", ("[]", ""))[0] or "[]")
+    except (json.JSONDecodeError, TypeError):
+        existing_projects = []
+    existing_certs = profile.get("patents_certs", ("", ""))[0] or ""
+
+    # 힌트 로드 (아직 imported 되지 않은 것만)
+    cur.execute(
+        "SELECT * FROM proposal_quantitative_hints WHERE proposal_source_id=? AND user_action != 'imported' ORDER BY id",
+        (pid,),
+    )
+    hint_rows = [dict(r) for r in cur.fetchall()]
+
+    project_candidates = []
+    cert_candidates = []
+    ignored = []
+
+    for h in hint_rows:
+        htype = h.get("type") or ""
+        name = (h.get("name") or "").strip()
+        suspicious = _is_suspicious(name)
+        if htype in _HINT_TO_PROJECT_HISTORY:
+            project_candidates.append({
+                "hint_id": h["id"],
+                "type": htype,
+                "name": name,
+                "client": (h.get("organization") or "").strip(),
+                "period": str(h.get("year") or ""),
+                "section": h.get("section") or "",
+                "is_duplicate": _is_duplicate_project(name, existing_projects),
+                "is_suspicious": suspicious,
+            })
+        elif htype in _HINT_TO_PATENTS_CERTS:
+            cert_candidates.append({
+                "hint_id": h["id"],
+                "type": htype,
+                "text": name,
+                "year": h.get("year"),
+                "section": h.get("section") or "",
+                "is_duplicate": _is_duplicate_cert(name, existing_certs),
+                "is_suspicious": suspicious,
+            })
+        else:
+            ignored.append({
+                "hint_id": h["id"],
+                "type": htype,
+                "name": name,
+                "reason": "현재 프로필 스키마에 매핑 규칙 없음",
+            })
+
+    # Claim 로드 — by category
+    cur.execute(
+        "SELECT * FROM claims WHERE proposal_source_id=? ORDER BY category, confidence DESC",
+        (pid,),
+    )
+    claim_rows = [dict(r) for r in cur.fetchall()]
+    by_category: dict = {}
+    counts: dict = {}
+    for c in claim_rows:
+        cat = c.get("category") or "Other"
+        # JSON 필드 파싱
+        for k in ("tags", "proposal_sections", "length_variants", "evidence_refs", "merged_from"):
+            v = c.get(k)
+            if isinstance(v, str) and v:
+                try:
+                    c[k] = json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+        by_category.setdefault(cat, []).append(c)
+        counts[cat] = counts.get(cat, 0) + 1
+    conn.close()
+
+    return {
+        "source": {
+            "src_id": src_row["src_id"],
+            "file_name": src_row["file_name"],
+            "organization": src_row["organization"],
+            "year": src_row["year"],
+            "awarded": bool(src_row["awarded"]) if src_row["awarded"] is not None else None,
+            "claim_count": len(claim_rows),
+            "hint_count": len(hint_rows),
+        },
+        "quantitative": {
+            "project_history": project_candidates,
+            "patents_certs": cert_candidates,
+            "ignored": ignored,
+        },
+        "claims": {
+            "by_category": by_category,
+            "counts": counts,
+        },
+    }
+
+
+@router.post("/apply-to-profile")
+def apply_to_profile(request: Request, body: dict):
+    """C-5-B: 선택된 힌트·claim을 company_profile에 병합 + claim 일괄 승인.
+
+    body = {
+        "source_id": str,             # src_id
+        "hint_ids": [int, ...],       # 반영할 힌트 ID
+        "claim_ids": [str, ...],      # 승인 처리할 claim_id
+        "merge_mode": "fill_empty" | "append_only"   # overwrite는 MVP 제외
+    }
+    """
+    require_login(request)
+    src_id = body.get("source_id")
+    hint_ids = list(body.get("hint_ids") or [])
+    claim_ids = list(body.get("claim_ids") or [])
+    merge_mode = body.get("merge_mode") or "fill_empty"
+    if merge_mode not in ("fill_empty", "append_only"):
+        raise HTTPException(status_code=400, detail="merge_mode는 fill_empty 또는 append_only")
+    if not src_id:
+        raise HTTPException(status_code=400, detail="source_id 필수")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM proposal_sources WHERE src_id=?", (src_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="제안서를 찾을 수 없습니다.")
+    pid = row["id"]
+
+    # 선택된 힌트 로드
+    hints: list = []
+    if hint_ids:
+        placeholders = ",".join("?" * len(hint_ids))
+        cur.execute(
+            f"SELECT * FROM proposal_quantitative_hints WHERE id IN ({placeholders}) AND proposal_source_id=?",
+            (*hint_ids, pid),
+        )
+        hints = [dict(r) for r in cur.fetchall()]
+
+    # 기존 프로필 로드
+    profile = _load_profile_map(conn)
+    existing_projects = []
+    try:
+        existing_projects = json.loads(profile.get("project_history", ("[]", ""))[0] or "[]")
+    except (json.JSONDecodeError, TypeError):
+        existing_projects = []
+    existing_certs = profile.get("patents_certs", ("", ""))[0] or ""
+
+    # 힌트 분류 + 병합
+    projects_added = 0
+    projects_skipped = 0
+    cert_lines_added = 0
+    cert_lines_skipped = 0
+    new_projects = list(existing_projects)
+    new_cert_lines: list = []
+
+    for h in hints:
+        htype = h.get("type") or ""
+        name = (h.get("name") or "").strip()
+        if not name:
+            continue
+        if htype in _HINT_TO_PROJECT_HISTORY:
+            if _is_duplicate_project(name, new_projects):
+                projects_skipped += 1
+                continue
+            new_projects.append(_hint_to_project_item(h))
+            projects_added += 1
+        elif htype in _HINT_TO_PATENTS_CERTS:
+            year = h.get("year")
+            line = f"{name} ({year})" if year else name
+            if _is_duplicate_cert(line, existing_certs) or _is_duplicate_cert(
+                line, "\n".join(new_cert_lines)
+            ):
+                cert_lines_skipped += 1
+                continue
+            new_cert_lines.append(line)
+            cert_lines_added += 1
+        # 매핑 없는 type은 silently skip
+
+    # project_history 저장
+    if projects_added > 0:
+        cur.execute(
+            "UPDATE company_profile SET field_value=?, updated_at=datetime('now','localtime') WHERE field_key='project_history'",
+            (json.dumps(new_projects, ensure_ascii=False),),
+        )
+
+    # patents_certs 저장 — merge_mode 적용
+    if cert_lines_added > 0:
+        if merge_mode == "fill_empty" and not existing_certs.strip():
+            new_certs_value = "\n".join(new_cert_lines)
+        else:
+            # append_only 또는 기존 값이 있을 때: 기존 + 줄바꿈 + 신규
+            sep = "\n" if existing_certs and not existing_certs.endswith("\n") else ""
+            new_certs_value = existing_certs + sep + "\n".join(new_cert_lines)
+        cur.execute(
+            "UPDATE company_profile SET field_value=?, updated_at=datetime('now','localtime') WHERE field_key='patents_certs'",
+            (new_certs_value,),
+        )
+
+    # 힌트 상태 imported
+    hints_marked = 0
+    if hint_ids:
+        placeholders = ",".join("?" * len(hint_ids))
+        cur.execute(
+            f"UPDATE proposal_quantitative_hints SET user_action='imported' WHERE id IN ({placeholders}) AND proposal_source_id=?",
+            (*hint_ids, pid),
+        )
+        hints_marked = cur.rowcount
+
+    # claim 일괄 승인
+    claims_approved = 0
+    if claim_ids:
+        placeholders = ",".join("?" * len(claim_ids))
+        cur.execute(
+            f"UPDATE claims SET user_verified=1, updated_at=datetime('now','localtime') WHERE claim_id IN ({placeholders}) AND proposal_source_id=?",
+            (*claim_ids, pid),
+        )
+        claims_approved = cur.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "profile_updates": {
+            "project_history": {"added": projects_added, "skipped_duplicates": projects_skipped},
+            "patents_certs": {"lines_added": cert_lines_added, "skipped_duplicates": cert_lines_skipped},
+        },
+        "claims_approved": claims_approved,
+        "hints_marked_imported": hints_marked,
+    }

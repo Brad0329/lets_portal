@@ -7,7 +7,158 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/settings.css">
-    <style>header { display: none; }</style>
+    <style>
+        header { display: none; }
+
+        /* ========== 역량 자산 보고서 뷰 ========== */
+        body.extractor-report-mode main > section:not(#company-profile-section),
+        body.extractor-report-mode #extractor-upload-panel,
+        body.extractor-report-mode #extractor-sources-wrap,
+        body.extractor-report-mode #extractor-claims-tabs,
+        body.extractor-report-mode #extractor-merge-panel,
+        body.extractor-report-mode .profile-tabs,
+        body.extractor-report-mode #profile-tab-quantitative,
+        body.extractor-report-mode #profile-tab-assets > .section-desc,
+        body.extractor-report-mode #extractor-claims-section > h3 {
+            display: none !important;
+        }
+        body.extractor-report-mode #profile-tab-assets { display: block !important; }
+        body.extractor-report-mode .settings-section h2 { display: none; }
+
+        .report-header {
+            border-bottom: 2px solid #1a5276;
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+        }
+        .report-header h1 {
+            margin: 0 0 6px;
+            font-size: 22px;
+            color: #1a5276;
+        }
+        .report-meta {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .report-meta strong { color: #1a5276; }
+        .report-sources {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #374151;
+            margin-top: 6px;
+        }
+        .report-category {
+            page-break-inside: auto;
+            margin-bottom: 24px;
+        }
+        .report-category-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            border-left: 5px solid var(--cat-color, #1a5276);
+            padding: 6px 10px;
+            background: var(--cat-bg, #f3f4f6);
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        .report-category-header h2 {
+            margin: 0 !important;
+            font-size: 15px !important;
+            color: var(--cat-color, #1a5276) !important;
+            display: inline-block !important;
+        }
+        .report-category-header .report-category-count {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        .report-claim {
+            padding: 8px 10px 8px 20px;
+            margin-bottom: 6px;
+            border-bottom: 1px dashed #e5e7eb;
+            page-break-inside: avoid;
+        }
+        .report-claim-statement {
+            font-size: 13px;
+            line-height: 1.55;
+            color: #1f2937;
+            position: relative;
+        }
+        .report-claim-statement::before {
+            content: "■";
+            position: absolute;
+            left: -14px;
+            top: 0;
+            color: var(--cat-color, #9ca3af);
+            font-size: 10px;
+        }
+        .report-claim-meta {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+            line-height: 1.5;
+        }
+        .report-claim-meta .tag {
+            display: inline-block;
+            background: #f0f9ff;
+            color: #075985;
+            padding: 0 6px;
+            border-radius: 8px;
+            margin-right: 3px;
+            font-size: 10px;
+        }
+        .report-claim-meta .variant {
+            color: #555;
+        }
+        .report-footer {
+            margin-top: 28px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 10px;
+            color: #9ca3af;
+            text-align: right;
+        }
+
+        /* ========== 인쇄 전용 ========== */
+        @media print {
+            @page { size: A4; margin: 15mm 14mm 18mm; }
+
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            nav, #main-navbar,
+            #extractor-upload-panel,
+            #extractor-sources-wrap,
+            #extractor-claims-tabs,
+            #extractor-claims-toolbar,
+            #extractor-merge-panel,
+            .profile-tabs,
+            main > section:not(#company-profile-section),
+            #profile-tab-quantitative,
+            .report-footer-actions {
+                display: none !important;
+            }
+            main { margin: 0 !important; padding: 0 !important; }
+            .settings-section {
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .settings-section h2 { display: none; }
+            #profile-tab-assets { display: block !important; }
+            #extractor-claims-section { display: block !important; margin-top: 0 !important; }
+            .report-claim { page-break-inside: avoid; }
+            .report-category-header { page-break-after: avoid; }
+            a[href]::after { content: ""; }
+        }
+    </style>
 </head>
 <body>
     <nav id="main-navbar"></nav>
@@ -78,8 +229,67 @@
         </section>
 
         <!-- 회사 프로필 -->
-        <section class="settings-section">
+        <section class="settings-section" id="company-profile-section">
             <h2>🏢 회사 프로필</h2>
+
+            <!-- C-5-B: 프로필 자동 채우기 카드 -->
+            <div id="autofill-card" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #bae6fd;border-radius:10px;padding:16px;margin-bottom:18px">
+                <h3 style="font-size:15px;margin:0 0 4px;color:#075985">🚀 제안서로 프로필 자동 채우기</h3>
+                <p style="font-size:12px;color:#0c4a6e;margin:0 0 12px">
+                    과거 제안서를 올리시면 정량 정보와 역량 claim을 분석해 <strong>프로필 초안</strong>을 작성합니다.
+                    분석 후 미리보기에서 반영할 항목을 선택하실 수 있어요.
+                </p>
+                <form id="autofill-upload-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
+                    <div style="flex:2 1 220px;min-width:200px">
+                        <label style="display:block;font-size:12px;color:#0c4a6e;margin-bottom:2px">파일 (PDF/HWP/HWPX/DOCX)</label>
+                        <input type="file" id="af-file" accept=".pdf,.hwp,.hwpx,.docx" required style="width:100%;font-size:12px" />
+                    </div>
+                    <div style="flex:0 0 90px">
+                        <label style="display:block;font-size:12px;color:#0c4a6e;margin-bottom:2px">연도</label>
+                        <input type="number" id="af-year" min="2000" max="2099" required style="width:100%;padding:6px 8px;border:1px solid #bae6fd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                    </div>
+                    <div style="flex:0 0 100px">
+                        <label style="display:block;font-size:12px;color:#0c4a6e;margin-bottom:2px">결과</label>
+                        <select id="af-awarded" required style="width:100%;padding:6px 8px;border:1px solid #bae6fd;border-radius:6px;font-size:13px;box-sizing:border-box">
+                            <option value="true">수주</option>
+                            <option value="false">탈락</option>
+                        </select>
+                    </div>
+                    <div style="flex:1 1 200px;min-width:160px">
+                        <label style="display:block;font-size:12px;color:#0c4a6e;margin-bottom:2px">발주처</label>
+                        <input type="text" id="af-organization" required placeholder="예: 경기도경제과학진흥원" style="width:100%;padding:6px 8px;border:1px solid #bae6fd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                    </div>
+                    <div style="flex:1 1 200px;min-width:160px">
+                        <label style="display:block;font-size:12px;color:#0c4a6e;margin-bottom:2px">제안서명 (선택)</label>
+                        <input type="text" id="af-title" placeholder="예: 2023 ESG 창업교육" style="width:100%;padding:6px 8px;border:1px solid #bae6fd;border-radius:6px;font-size:13px;box-sizing:border-box" />
+                    </div>
+                    <button type="submit" class="btn" style="flex:0 0 auto">📤 분석 시작</button>
+                </form>
+                <div id="autofill-progress" style="display:none;margin-top:10px"></div>
+                <div id="autofill-msg" class="msg" style="margin-top:6px"></div>
+            </div>
+
+            <!-- C-5-B: 미리보기 모달 -->
+            <div id="autofill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+                <div style="background:#fff;width:min(900px,94vw);max-height:90vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+                    <div style="padding:14px 18px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px">
+                        <h3 style="margin:0;font-size:16px;color:#1a5276;flex:1">✨ 분석 결과 미리보기</h3>
+                        <span id="autofill-modal-summary" style="font-size:12px;color:#6b7280"></span>
+                        <button type="button" onclick="autofillCloseModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280">✕</button>
+                    </div>
+                    <div id="autofill-modal-body" style="flex:1;overflow-y:auto;padding:14px 18px"></div>
+                    <div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;background:#f9fafb">
+                        <div style="font-size:12px;color:#374151">
+                            병합 규칙:
+                            <label style="margin-left:6px"><input type="radio" name="af-merge-mode" value="fill_empty" checked> 빈 칸만 채우기 <span style="color:#9ca3af">(권장)</span></label>
+                            <label style="margin-left:10px"><input type="radio" name="af-merge-mode" value="append_only"> 기존 유지 + 추가만</label>
+                        </div>
+                        <div style="flex:1"></div>
+                        <button type="button" class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="autofillCloseModal()">취소</button>
+                        <button type="button" class="btn" id="autofill-apply-btn" onclick="autofillApply()">선택한 항목 반영</button>
+                    </div>
+                </div>
+            </div>
 
             <div class="profile-tabs" style="display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
                 <button type="button" class="profile-tab active" data-profile-tab="quantitative" onclick="switchProfileTab('quantitative')"
@@ -133,7 +343,7 @@
                     <div id="ex-upload-msg" class="msg" style="margin-top:8px"></div>
                 </div>
 
-                <div style="margin-bottom:16px">
+                <div id="extractor-sources-wrap" style="margin-bottom:16px">
                     <h3 style="font-size:14px;margin:8px 0;color:#1a5276">📚 업로드된 제안서</h3>
                     <div id="extractor-sources"><p style="color:#aaa;font-size:13px">로딩 중...</p></div>
                 </div>
@@ -191,5 +401,6 @@
     <script src="/js/auth.js"></script>
     <script src="/js/settings.js"></script>
     <script src="/js/extractor.js"></script>
+    <script src="/js/autofill.js"></script>
 </body>
 </html>
