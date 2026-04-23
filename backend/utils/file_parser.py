@@ -65,10 +65,20 @@ def extract_text(file_path: str) -> ParseResult:
         ".hwp": _parse_hwp,
     }
 
+    # Phase D-2 결정(2026-04-22): PPTX 는 본 파서 지원 대상 아님.
+    # 슬라이드 단위 구조가 섹션 개념과 맞지 않고, 실무 샘플 10건 중 PPTX 1건뿐이라
+    # 추가 파서 작성 대비 이득이 작음. HWP/HWPX/PDF/DOCX 로 변환 후 재업로드 안내.
+    if suffix == ".pptx" or suffix == ".ppt":
+        return ParseResult(
+            error="PPTX/PPT 는 지원하지 않습니다. PDF 또는 DOCX 로 변환 후 업로드해 주세요.",
+            format=suffix.lstrip("."),
+            raw_bytes=raw,
+        )
+
     parser = parsers.get(suffix)
     if parser is None:
         return ParseResult(
-            error=f"지원하지 않는 포맷: {suffix}",
+            error=f"지원하지 않는 포맷: {suffix} (HWP/HWPX/PDF/DOCX 만 지원)",
             format=suffix.lstrip("."),
             raw_bytes=raw,
         )

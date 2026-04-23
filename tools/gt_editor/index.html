@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>GT Editor — Phase D</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; color: #333; }
+  header {
+    padding: 8px 14px; background: #1f2937; color: #fff;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  header select { padding: 4px 8px; min-width: 340px; font-size: 13px; }
+  header button { padding: 6px 12px; cursor: pointer; font-size: 13px; border: 0; border-radius: 4px; background: #3b82f6; color: #fff; }
+  header button.ghost { background: #374151; }
+  header button:hover { filter: brightness(1.1); }
+  #status-pill { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #374151; }
+  #save-state.unsaved { color: #fbbf24; font-weight: bold; }
+  #save-state.saved { color: #10b981; }
+
+  #main { display: grid; grid-template-columns: 1.7fr 1fr; height: calc(100vh - 52px); }
+  #viewer {
+    overflow: auto; background: #fafafa; padding: 0 8px 20px;
+    border-right: 1px solid #ddd; font-family: "Consolas", monospace; font-size: 12px;
+  }
+  .line { display: flex; gap: 8px; padding: 1px 0; }
+  .lno {
+    color: #aaa; min-width: 56px; text-align: right;
+    user-select: none; cursor: pointer; padding-right: 8px;
+    border-right: 1px solid #e5e5e5;
+  }
+  .lno:hover { background: #ffeb99; color: #000; }
+  .content { white-space: pre-wrap; word-break: break-all; flex: 1; }
+  .line.hl { background: #fff3a8; }
+  .line.hl .lno { background: #fde047; color: #333; font-weight: bold; }
+  .line.hl .content { font-weight: bold; }
+
+  #editor { overflow: auto; padding: 10px 12px; font-size: 13px; }
+  #editor h3 { margin: 14px 0 6px; font-size: 14px; }
+  .meta-row { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+  .meta-row input[type="number"] { width: 60px; padding: 2px 6px; }
+  .meta-row input[type="text"] { flex: 1; padding: 2px 6px; }
+
+  table.sec { border-collapse: collapse; width: 100%; }
+  table.sec th, table.sec td { border: 1px solid #e5e5e5; padding: 3px 4px; vertical-align: middle; }
+  table.sec th { background: #f3f4f6; font-weight: 600; font-size: 12px; }
+  table.sec tr.active { background: #dbeafe; }
+  table.sec tr.skip td { background: #fef3c7; }
+  table.sec tr.skip.active td { background: #fde68a; }
+  table.sec input[type="text"] { width: 100%; border: 0; background: transparent; padding: 2px; font-size: 12px; }
+  table.sec input[type="text"]:focus { background: #fff; outline: 1px solid #3b82f6; }
+  table.sec input[type="number"] { width: 58px; font-size: 12px; }
+  table.sec select { font-size: 12px; }
+  table.sec button { background: #ef4444; color: #fff; border: 0; border-radius: 3px; cursor: pointer; padding: 2px 6px; }
+  table.sec button:hover { filter: brightness(1.1); }
+
+  .toolbar { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .toolbar button { padding: 4px 10px; cursor: pointer; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; font-size: 12px; }
+  .toolbar button:hover { background: #f3f4f6; }
+  .toolbar button.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .toolbar button.primary:hover { background: #2563eb; }
+
+  .hint { color: #6b7280; font-size: 11px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <strong style="font-size: 15px;">🔬 GT Editor</strong>
+  <select id="file-select"></select>
+  <span id="status-pill">- / -</span>
+  <div style="flex:1"></div>
+  <span id="save-state" class="saved">저장됨</span>
+  <button class="ghost" id="btn-reload">↻ 파일목록</button>
+  <button id="btn-save">💾 저장</button>
+</header>
+
+<div id="main">
+  <div id="viewer"></div>
+
+  <div id="editor">
+    <div class="meta-row">
+      <label>expected_claim_range</label>
+      <input type="number" id="claim-min" min="0" title="최소 claim 수">
+      <span>~</span>
+      <input type="number" id="claim-max" min="0" title="최대 claim 수">
+    </div>
+    <div class="meta-row">
+      <label>notes</label>
+      <input type="text" id="notes" placeholder="메모(선택)">
+    </div>
+
+    <div class="toolbar">
+      <button class="primary" id="btn-add">＋ 섹션 추가</button>
+      <button id="btn-load-toc" title="D-2 목차 탐지 프로토타입 결과를 초안으로">🔬 D-2 목차 불러오기</button>
+      <button id="btn-load-auto">현 파서 섹션 불러오기</button>
+      <button id="btn-clear">전부 비우기</button>
+    </div>
+    <div id="toc-summary" class="hint" style="margin-top: 4px;"></div>
+    <div class="hint">💡 섹션 행을 클릭해 <b>선택(파란 하이라이트)</b> 후, 좌측 본문에서 줄 번호를 클릭하면 start_line 이 자동 입력됩니다. 섹션 중 skip=true 는 "평가기준·회사claim 수확이 거의 없어 분석 대상에서 제외" 섹션 (사업의 필요성, 기대효과 등).</div>
+
+    <h3>섹션 목록 <span id="sec-count" style="color:#6b7280; font-weight: normal;"></span></h3>
+    <table class="sec" id="sec-table">
+      <thead>
+        <tr>
+          <th style="width: 26px;">#</th>
+          <th style="width: 48px;">level</th>
+          <th>name</th>
+          <th style="width: 64px;">start</th>
+          <th style="width: 40px;">skip</th>
+          <th style="width: 28px;"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+//─────────────────────────────────────────
+// 상태
+//─────────────────────────────────────────
+let FILES = [];
+let CUR = null;          // 현재 선택 파일 메타
+let TEXT_LINES = [];     // 본문 줄 배열
+let SECTIONS = [];       // [{name, level, start_line, skip}]
+let ACTIVE_ROW = null;   // 선택된 섹션 인덱스
+let DIRTY = false;
+let RENDER_LIMIT = 6000; // 큰 HWP 상한 (혁신창업 3656줄 · 산림 2016줄 커버)
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+//─────────────────────────────────────────
+// API
+//─────────────────────────────────────────
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+//─────────────────────────────────────────
+// 파일 목록
+//─────────────────────────────────────────
+async function refreshFiles() {
+  FILES = await api("/api/files");
+  const sel = $("#file-select");
+  const prev = CUR ? CUR.id : 0;
+  sel.innerHTML = FILES.map((f, i) => {
+    const done = f.gt_exists ? " ✓" : "";
+    const ps = f.parse_success ? "" : " [파싱실패]";
+    const sf = f.silent_fail ? " ⚠️0섹션" : "";
+    const short = f.file.length > 60 ? f.file.slice(0, 57) + "…" : f.file;
+    return `<option value="${i}">${i+1}. ${short}${done}${ps}${sf}</option>`;
+  }).join("");
+  const done = FILES.filter((f) => f.gt_exists).length;
+  $("#status-pill").textContent = `${done} / ${FILES.length} 완료`;
+  sel.selectedIndex = prev;
+}
+
+//─────────────────────────────────────────
+// 파일 로드
+//─────────────────────────────────────────
+async function loadFile(id) {
+  CUR = FILES[id];
+  if (CUR.parse_success) {
+    const { text } = await api(`/api/files/${id}/text`);
+    TEXT_LINES = text.split("\n");
+  } else {
+    TEXT_LINES = [];
+  }
+  renderViewer();
+
+  const gt = await api(`/api/files/${id}/gt`);
+  SECTIONS = (gt.expected_sections || []).map(normalizeSection);
+  $("#claim-min").value = (gt.expected_claim_range || [10, 40])[0];
+  $("#claim-max").value = (gt.expected_claim_range || [10, 40])[1];
+  $("#notes").value = gt.notes || "";
+  ACTIVE_ROW = null;
+
+  renderSections();
+  renderHighlights();
+  markClean();
+}
+
+function normalizeSection(s) {
+  return {
+    name: s.name || "",
+    level: parseInt(s.level) || 2,
+    start_line: parseInt(s.start_line ?? s.start ?? 0) || 0,
+    skip: !!s.skip,
+  };
+}
+
+//─────────────────────────────────────────
+// 본문 렌더
+//─────────────────────────────────────────
+function renderViewer() {
+  const viewer = $("#viewer");
+  if (!CUR || !CUR.parse_success) {
+    viewer.innerHTML = `<div style="padding:20px; color:#999;">⚠️ 파싱 실패 파일 — 본문 없음 (PPTX 등 미지원)</div>`;
+    return;
+  }
+  const max = Math.min(TEXT_LINES.length, RENDER_LIMIT);
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const rows = new Array(max);
+  for (let i = 0; i < max; i++) {
+    const ln = TEXT_LINES[i];
+    rows[i] = `<div class="line" data-line="${i}"><span class="lno">${i}</span><span class="content">${esc(ln || " ")}</span></div>`;
+  }
+  let html = rows.join("");
+  if (TEXT_LINES.length > max) {
+    html += `<div style="padding:12px; color:#ef4444;">⚠️ ${TEXT_LINES.length - max}줄 추가 생략 (렌더 상한 ${max}줄)</div>`;
+  }
+  viewer.innerHTML = html;
+  viewer.querySelectorAll(".lno").forEach((el) => {
+    el.addEventListener("click", () => {
+      const n = parseInt(el.parentElement.dataset.line);
+      lineClicked(n);
+    });
+  });
+}
+
+function lineClicked(n) {
+  if (ACTIVE_ROW === null) {
+    alert("우측에서 섹션 행을 먼저 클릭해 선택하세요.");
+    return;
+  }
+  SECTIONS[ACTIVE_ROW].start_line = n;
+  // 섹션 이름이 비어 있으면 해당 줄의 앞부분을 제안값으로
+  if (!SECTIONS[ACTIVE_ROW].name.trim()) {
+    const sugg = (TEXT_LINES[n] || "").trim().slice(0, 40);
+    if (sugg) SECTIONS[ACTIVE_ROW].name = sugg;
+  }
+  renderSections();
+  renderHighlights();
+  markDirty();
+  // 선택 행을 보이게 스크롤
+  const row = $(`#sec-table tr[data-i="${ACTIVE_ROW}"]`);
+  if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function renderHighlights() {
+  $$("#viewer .line.hl").forEach((el) => el.classList.remove("hl"));
+  SECTIONS.forEach((s) => {
+    if (!s.start_line && s.start_line !== 0) return;
+    const el = $(`#viewer .line[data-line="${s.start_line}"]`);
+    if (el) el.classList.add("hl");
+  });
+}
+
+//─────────────────────────────────────────
+// 섹션 테이블
+//─────────────────────────────────────────
+function renderSections() {
+  const tb = $("#sec-table tbody");
+  tb.innerHTML = SECTIONS.map((s, i) => {
+    const nameEsc = (s.name || "").replace(/"/g, "&quot;");
+    const activeCls = ACTIVE_ROW === i ? " active" : "";
+    const skipCls = s.skip ? " skip" : "";
+    return `<tr data-i="${i}" class="${activeCls}${skipCls}">
+      <td>${i + 1}</td>
+      <td><select data-action="level" data-i="${i}">
+        <option value="1"${s.level===1?' selected':''}>1</option>
+        <option value="2"${s.level===2?' selected':''}>2</option>
+        <option value="3"${s.level===3?' selected':''}>3</option>
+      </select></td>
+      <td><input type="text" data-action="name" data-i="${i}" value="${nameEsc}"></td>
+      <td><input type="number" data-action="start" data-i="${i}" value="${s.start_line || 0}" min="0"></td>
+      <td style="text-align:center;"><input type="checkbox" data-action="skip" data-i="${i}"${s.skip?' checked':''}></td>
+      <td style="text-align:center;"><button data-action="del" data-i="${i}">✕</button></td>
+    </tr>`;
+  }).join("");
+  $("#sec-count").textContent = `(${SECTIONS.length}개 · skip ${SECTIONS.filter(s=>s.skip).length}개)`;
+
+  // 이벤트 위임
+  tb.querySelectorAll("tr").forEach((tr) => {
+    tr.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t.tagName === "INPUT" || t.tagName === "SELECT") return; // edit 이벤트에 맡김
+      if (t.dataset.action === "del") {
+        const i = parseInt(t.dataset.i);
+        if (confirm(`섹션 #${i+1} (${SECTIONS[i].name || "이름없음"}) 삭제?`)) {
+          SECTIONS.splice(i, 1);
+          if (ACTIVE_ROW === i) ACTIVE_ROW = null;
+          else if (ACTIVE_ROW > i) ACTIVE_ROW--;
+          renderSections();
+          renderHighlights();
+          markDirty();
+        }
+        return;
+      }
+      ACTIVE_ROW = parseInt(tr.dataset.i);
+      renderSections();
+    });
+  });
+
+  tb.querySelectorAll("input, select").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      const action = el.dataset.action;
+      const i = parseInt(el.dataset.i);
+      if (action === "name") SECTIONS[i].name = el.value;
+      else if (action === "level") SECTIONS[i].level = parseInt(el.value);
+      else if (action === "start") {
+        SECTIONS[i].start_line = parseInt(el.value) || 0;
+        renderHighlights();
+      }
+      else if (action === "skip") {
+        SECTIONS[i].skip = el.checked;
+        renderSections();
+      }
+      markDirty();
+    });
+  });
+}
+
+//─────────────────────────────────────────
+// 툴바 액션
+//─────────────────────────────────────────
+function addSection() {
+  SECTIONS.push({ name: "", level: 2, start_line: 0, skip: false });
+  ACTIVE_ROW = SECTIONS.length - 1;
+  renderSections();
+  markDirty();
+  const row = $(`#sec-table tr[data-i="${ACTIVE_ROW}"]`);
+  if (row) row.scrollIntoView({ block: "nearest" });
+  row && row.querySelector('input[data-action="name"]').focus();
+}
+
+async function loadAutoSections() {
+  if (SECTIONS.length && !confirm("현 섹션을 모두 덮어씁니다. 진행할까요?")) return;
+  const auto = await api(`/api/files/${CUR.id}/auto-sections`);
+  SECTIONS = auto.map((s) => ({
+    name: s.name || "",
+    level: s.level || 2,
+    start_line: s.start || s.start_line || 0,
+    skip: false,
+  }));
+  ACTIVE_ROW = null;
+  $("#toc-summary").textContent = "";
+  renderSections();
+  renderHighlights();
+  markDirty();
+}
+
+async function loadTocSections() {
+  if (SECTIONS.length && !confirm("현 섹션을 모두 덮어씁니다. 진행할까요?")) return;
+  try {
+    const res = await api(`/api/files/${CUR.id}/toc-sections`);
+    if (!res.ok) {
+      $("#toc-summary").textContent = `⚠️ 목차 탐지 실패: ${res.reason}`;
+      return;
+    }
+    SECTIONS = (res.sections || []).map((s) => ({
+      name: s.name || "",
+      level: s.level || 2,
+      start_line: s.start_line || 0,
+      skip: !!s.skip,
+    }));
+    const sm = res.summary || {};
+    const modeStr = Object.entries(sm.match_by_mode || {}).map(([k, v]) => `${k}=${v}`).join(" ");
+    $("#toc-summary").textContent =
+      `🔬 D-2 결과: 엔트리 ${sm.entries_total || 0}개 · 매칭률 ${((sm.match_rate || 0) * 100).toFixed(0)}% · ${modeStr}`;
+    ACTIVE_ROW = null;
+    renderSections();
+    renderHighlights();
+    markDirty();
+  } catch (e) {
+    alert("목차 탐지 실패: " + e.message);
+  }
+}
+
+function clearAll() {
+  if (!SECTIONS.length) return;
+  if (!confirm(`섹션 ${SECTIONS.length}개를 모두 지웁니다. 진행?`)) return;
+  SECTIONS = [];
+  ACTIVE_ROW = null;
+  renderSections();
+  renderHighlights();
+  markDirty();
+}
+
+async function save() {
+  if (!CUR) return;
+  const payload = {
+    file: CUR.file,
+    expected_sections: SECTIONS,
+    expected_claim_range: [
+      parseInt($("#claim-min").value) || 10,
+      parseInt($("#claim-max").value) || 40,
+    ],
+    notes: $("#notes").value || "",
+  };
+  try {
+    const r = await api(`/api/files/${CUR.id}/gt`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    markClean();
+    await refreshFiles();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+}
+
+function markDirty() {
+  DIRTY = true;
+  $("#save-state").textContent = "● 수정됨 (Ctrl+S)";
+  $("#save-state").className = "unsaved";
+}
+function markClean() {
+  DIRTY = false;
+  $("#save-state").textContent = "저장됨";
+  $("#save-state").className = "saved";
+}
+
+//─────────────────────────────────────────
+// 이벤트 바인딩
+//─────────────────────────────────────────
+$("#file-select").addEventListener("change", async (e) => {
+  if (DIRTY && !confirm("저장 안 된 수정사항이 있습니다. 이동할까요?")) {
+    e.target.value = CUR.id;
+    return;
+  }
+  await loadFile(parseInt(e.target.value));
+});
+$("#btn-add").addEventListener("click", addSection);
+$("#btn-load-auto").addEventListener("click", loadAutoSections);
+$("#btn-load-toc").addEventListener("click", loadTocSections);
+$("#btn-clear").addEventListener("click", clearAll);
+$("#btn-save").addEventListener("click", save);
+$("#btn-reload").addEventListener("click", refreshFiles);
+$("#claim-min").addEventListener("change", markDirty);
+$("#claim-max").addEventListener("change", markDirty);
+$("#notes").addEventListener("input", markDirty);
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    save();
+  }
+  // Ctrl+Enter: 현재 섹션 아래 새 섹션 추가
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    addSection();
+  }
+});
+
+window.addEventListener("beforeunload", (e) => {
+  if (DIRTY) { e.preventDefault(); e.returnValue = ""; }
+});
+
+//─────────────────────────────────────────
+// 부트
+//─────────────────────────────────────────
+(async () => {
+  try {
+    await refreshFiles();
+    if (FILES.length) await loadFile(0);
+  } catch (e) {
+    document.body.innerHTML = `<div style="padding:20px; color:#c00;">
+      <h2>초기화 실패</h2><pre>${e.message}</pre>
+      <p><code>python tools/check_parser.py --dump</code> 를 먼저 실행했는지 확인하세요.</p>
+    </div>`;
+  }
+})();
+</script>
+</body>
+</html>
